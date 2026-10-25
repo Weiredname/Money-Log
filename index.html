@@ -89,9 +89,16 @@
                     <h1 class="text-2xl font-bold tracking-tight text-sand-900 dark:text-white">Personal Money Management</h1>
                 </div>
                 <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5 pl-4">Daily Tracker, Savings Vault & Target Goals</p>
+                <p id="rate-info" class="text-[11px] font-medium text-sage-600 dark:text-sage-400 mt-0.5 pl-4"></p>
             </div>
             
             <div class="flex flex-wrap items-center gap-2">
+                <!-- Language Selector -->
+                <select id="lang-select" onchange="setLang(this.value)" class="px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 shadow-xs"></select>
+
+                <!-- Currency Selector -->
+                <select id="currency-select" onchange="setCurrency(this.value)" class="px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 shadow-xs"></select>
+
                 <!-- Theme Toggle Button -->
                 <button onclick="toggleTheme()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
                     <i id="theme-icon" data-lucide="moon" class="w-3.5 h-3.5"></i>
@@ -99,14 +106,14 @@
                 </button>
 
                 <!-- Explicit Save Data Button -->
-                <button onclick="manualSaveData()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 dark:bg-sage-500 dark:hover:bg-sage-600 rounded-xl transition-all shadow-xs">
-                    <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                <button onclick="manualSaveData()" class="group inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 dark:bg-sage-500 dark:hover:bg-sage-600 rounded-xl transition-all shadow-xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                     Save Data
                 </button>
 
                 <!-- Export PDF Report Button -->
-                <button onclick="exportPDFReport()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
-                    <i data-lucide="file-text" class="w-3.5 h-3.5 text-sage-600 dark:text-sage-400"></i>
+                <button onclick="exportPDFReport()" class="group inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform duration-200 group-hover:translate-y-0.5 text-sage-600 dark:text-sage-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     Export My Log (PDF)
                 </button>
 
@@ -131,7 +138,7 @@
                 </div>
                 <div>
                     <div class="flex items-center gap-1.5">
-                        <span class="text-sm font-semibold text-stone-400">Rp</span>
+                        <span class="cur-symbol text-sm font-semibold text-stone-400">Rp</span>
                         <input type="number" id="base-income-input" onchange="updateBaseIncome()" class="w-full text-xl font-bold text-sand-900 dark:text-white bg-sand-50/70 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-sage-500/40 transition-all">
                     </div>
                     <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1.5">Fixed income baseline</p>
@@ -274,8 +281,8 @@
 
                             <!-- Amount -->
                             <div>
-                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Amount (Rp)</label>
-                                <input type="number" id="tx-amount" min="1" placeholder="10000" required class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all">
+                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Amount (<span class="cur-code">IDR</span>)</label>
+                                <input type="number" id="tx-amount" min="0.01" step="any" placeholder="10000" required class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all">
                             </div>
                         </div>
 
@@ -378,7 +385,7 @@
                     <!-- Quick Add to Vault -->
                     <form onsubmit="handleQuickVaultSave(event)" class="space-y-2">
                         <div class="flex items-center gap-2">
-                            <input type="number" id="quick-vault-amount" min="1" placeholder="Amount (Rp)" required class="w-full px-3 py-2 text-xs bg-sand-50 dark:bg-darkbg-900 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/30 text-sand-900 dark:text-white">
+                            <input type="number" id="quick-vault-amount" min="0.01" step="any" placeholder="Amount (IDR)" required class="w-full px-3 py-2 text-xs bg-sand-50 dark:bg-darkbg-900 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/30 text-sand-900 dark:text-white">
                             <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shrink-0 flex items-center gap-1">
                                 <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
                             </button>
@@ -405,7 +412,7 @@
                             <input type="text" id="goal-title" onchange="updateGoalInfo()" class="w-full px-3 py-1.5 text-xs font-semibold bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-600 rounded-lg focus:outline-none text-sand-900 dark:text-white">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Target Price (Rp)</label>
+                            <label class="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Target Price (<span class="cur-code">IDR</span>)</label>
                             <input type="number" id="goal-target" onchange="updateGoalInfo()" class="w-full px-3 py-1.5 text-xs font-semibold bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-600 rounded-lg focus:outline-none text-sand-900 dark:text-white">
                         </div>
                     </div>
@@ -434,7 +441,7 @@
                     <!-- Quick Deposit To Goal -->
                     <form onsubmit="handleQuickGoalSave(event)" class="space-y-2">
                         <div class="flex items-center gap-2">
-                            <input type="number" id="quick-goal-amount" min="1" placeholder="Amount (Rp)" required class="w-full px-3 py-2 text-xs bg-sand-50 dark:bg-darkbg-900 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/30 text-sand-900 dark:text-white">
+                            <input type="number" id="quick-goal-amount" min="0.01" step="any" placeholder="Amount (IDR)" required class="w-full px-3 py-2 text-xs bg-sand-50 dark:bg-darkbg-900 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/30 text-sand-900 dark:text-white">
                             <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 rounded-xl transition-all shrink-0 flex items-center gap-1">
                                 <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
                             </button>
@@ -502,6 +509,9 @@
 
     <!-- Application JavaScript Logic -->
     <script>
+        // If the icon library fails to load (blocked/offline), don't let it break the whole app
+        if (typeof lucide === 'undefined') { window.__noIcons = true; window.lucide = { createIcons() {} }; }
+
         const DEFAULT_BASE_INCOME = 505955;
         const DEFAULT_GOAL = { title: "Custom Goal", target: 1000000 };
         const DEFAULT_TRANSACTIONS = [
@@ -518,7 +528,248 @@
         let chartInstance = null;
         let isDarkMode = localStorage.getItem('pm_theme') === 'dark';
 
+        // ---------- Language Support ----------
+        const LANGS = {
+            en: { name: 'English', locale: 'en-US' },
+            id: { name: 'Bahasa Indonesia', locale: 'id-ID' },
+            ms: { name: 'Bahasa Melayu', locale: 'ms-MY' },
+            zh: { name: '中文 (简体)', locale: 'zh-CN' }
+        };
+
+        // Keys are the English texts used in the page
+        const DICT = {
+            id: {
+                "Personal Money Management":"Manajemen Keuangan Pribadi","Daily Tracker, Savings Vault & Target Goals":"Pencatat Harian, Brankas Tabungan & Target Impian",
+                "Dark Mode":"Mode Gelap","Light Mode":"Mode Terang","Save Data":"Simpan Data","Export My Log (PDF)":"Ekspor Catatan (PDF)","Reset":"Atur Ulang",
+                "Baseline Income":"Pendapatan Dasar","Fixed income baseline":"Pendapatan tetap dasar","Total Income":"Total Pemasukan","Base + Additional Incomes":"Dasar + Pemasukan Tambahan",
+                "Total Expenses":"Total Pengeluaran","Needs + Wants Spent":"Kebutuhan + Keinginan yang Dibelanjakan","Cash in Wallet":"Uang di Dompet","Net Balance after Deductions":"Saldo Bersih setelah Potongan",
+                "Spending & Allocation Breakdown":"Rincian Pengeluaran & Alokasi","Category":"Kategori","Amount":"Jumlah","% Allocation":"% Alokasi","Needs":"Kebutuhan","Wants":"Keinginan","Savings & Goals":"Tabungan & Target",
+                "Log Daily Entry":"Catat Transaksi Harian","Date":"Tanggal","Type":"Jenis","Item Description":"Deskripsi Item","Amount (":"Jumlah (",
+                "Need (Expense)":"Kebutuhan (Pengeluaran)","Want (Expense)":"Keinginan (Pengeluaran)","Save (Savings / Goal)":"Tabung (Tabungan / Target)","Income (+)":"Pemasukan (+)",
+                "Deduct from Cash Balance (Wallet)?":"Kurangi dari Saldo Tunai (Dompet)?","Yes (Deduct)":"Ya (Kurangi)","No (Keep Balance)":"Tidak (Saldo Tetap)","Add Entry":"Tambah Catatan",
+                "Daily Money Log":"Catatan Keuangan Harian","Filter, search, and manage your logged transactions":"Filter, cari, dan kelola transaksi Anda","All":"Semua","Savings":"Tabungan","Income":"Pemasukan",
+                "Expense / Save":"Pengeluaran / Tabungan","Action":"Aksi",
+                "General Savings Vault":"Brankas Tabungan Umum","Private stored savings stash":"Simpanan tabungan pribadi","Total Vault Stash":"Total Isi Brankas","Add":"Tambah",
+                "Target Goals Tracker":"Pelacak Target","Custom wish & dream items":"Barang impian & keinginan khusus","Goal Item Name":"Nama Barang Target","Target Price (":"Harga Target (",
+                "Saved For Goal":"Terkumpul untuk Target","Remaining needed:":"Sisa yang dibutuhkan:",
+                "Personal Financial Report":"Laporan Keuangan Pribadi","Generated on:":"Dibuat pada:","Money Management App":"Aplikasi Manajemen Uang","Cash Remaining":"Sisa Uang Tunai",
+                "Spending Breakdown":"Rincian Pengeluaran","Needs:":"Kebutuhan:","Wants:":"Keinginan:","Savings/Goals:":"Tabungan/Target:","Transaction History Log":"Riwayat Transaksi","Item":"Item","Expense/Save":"Pengeluaran/Tabungan",
+                "No entries found.":"Tidak ada catatan.","Deducted":"Dikurangi","No Deduct":"Tidak Dikurangi","Delete":"Hapus","Need":"Kebutuhan","Want":"Keinginan","Save":"Tabungan",
+                "e.g. Water 10k, Boba...":"mis. Air 10rb, Boba...","Search...":"Cari...",
+                "All data saved to Local Storage!":"Semua data tersimpan!","Log entry added!":"Catatan ditambahkan!","Added to Savings Vault!":"Ditambahkan ke Brankas Tabungan!",
+                "Added to Goal Tracker!":"Ditambahkan ke Pelacak Target!","Baseline Income updated!":"Pendapatan dasar diperbarui!","Target Goal updated!":"Target diperbarui!",
+                "Entry deleted":"Catatan dihapus","All data reset to initial defaults":"Semua data dikembalikan ke awal","Generating PDF Report...":"Membuat laporan PDF...","Currency changed to":"Mata uang diubah ke"
+            },
+            ms: {
+                "Personal Money Management":"Pengurusan Wang Peribadi","Daily Tracker, Savings Vault & Target Goals":"Penjejak Harian, Peti Simpanan & Matlamat Sasaran",
+                "Dark Mode":"Mod Gelap","Light Mode":"Mod Cerah","Save Data":"Simpan Data","Export My Log (PDF)":"Eksport Log Saya (PDF)","Reset":"Set Semula",
+                "Baseline Income":"Pendapatan Asas","Fixed income baseline":"Asas pendapatan tetap","Total Income":"Jumlah Pendapatan","Base + Additional Incomes":"Asas + Pendapatan Tambahan",
+                "Total Expenses":"Jumlah Perbelanjaan","Needs + Wants Spent":"Keperluan + Kehendak Dibelanjakan","Cash in Wallet":"Wang Tunai dalam Dompet","Net Balance after Deductions":"Baki Bersih selepas Potongan",
+                "Spending & Allocation Breakdown":"Pecahan Perbelanjaan & Peruntukan","Category":"Kategori","Amount":"Jumlah","% Allocation":"% Peruntukan","Needs":"Keperluan","Wants":"Kehendak","Savings & Goals":"Simpanan & Matlamat",
+                "Log Daily Entry":"Rekod Entri Harian","Date":"Tarikh","Type":"Jenis","Item Description":"Perihal Item","Amount (":"Jumlah (",
+                "Need (Expense)":"Keperluan (Perbelanjaan)","Want (Expense)":"Kehendak (Perbelanjaan)","Save (Savings / Goal)":"Simpan (Simpanan / Matlamat)","Income (+)":"Pendapatan (+)",
+                "Deduct from Cash Balance (Wallet)?":"Tolak daripada Baki Tunai (Dompet)?","Yes (Deduct)":"Ya (Tolak)","No (Keep Balance)":"Tidak (Kekalkan Baki)","Add Entry":"Tambah Entri",
+                "Daily Money Log":"Log Wang Harian","Filter, search, and manage your logged transactions":"Tapis, cari dan urus transaksi anda","All":"Semua","Savings":"Simpanan","Income":"Pendapatan",
+                "Expense / Save":"Perbelanjaan / Simpanan","Action":"Tindakan",
+                "General Savings Vault":"Peti Simpanan Am","Private stored savings stash":"Simpanan peribadi","Total Vault Stash":"Jumlah Simpanan Peti","Add":"Tambah",
+                "Target Goals Tracker":"Penjejak Matlamat Sasaran","Custom wish & dream items":"Barang impian & hajat khas","Goal Item Name":"Nama Barang Matlamat","Target Price (":"Harga Sasaran (",
+                "Saved For Goal":"Disimpan untuk Matlamat","Remaining needed:":"Baki diperlukan:",
+                "Personal Financial Report":"Laporan Kewangan Peribadi","Generated on:":"Dijana pada:","Money Management App":"Aplikasi Pengurusan Wang","Cash Remaining":"Baki Tunai",
+                "Spending Breakdown":"Pecahan Perbelanjaan","Needs:":"Keperluan:","Wants:":"Kehendak:","Savings/Goals:":"Simpanan/Matlamat:","Transaction History Log":"Log Sejarah Transaksi","Item":"Item","Expense/Save":"Belanja/Simpan",
+                "No entries found.":"Tiada entri ditemui.","Deducted":"Ditolak","No Deduct":"Tidak Ditolak","Delete":"Padam","Need":"Keperluan","Want":"Kehendak","Save":"Simpanan",
+                "e.g. Water 10k, Boba...":"cth. Air 10k, Boba...","Search...":"Cari...",
+                "All data saved to Local Storage!":"Semua data disimpan!","Log entry added!":"Entri ditambah!","Added to Savings Vault!":"Ditambah ke Peti Simpanan!",
+                "Added to Goal Tracker!":"Ditambah ke Penjejak Matlamat!","Baseline Income updated!":"Pendapatan asas dikemas kini!","Target Goal updated!":"Matlamat sasaran dikemas kini!",
+                "Entry deleted":"Entri dipadam","All data reset to initial defaults":"Semua data ditetapkan semula","Generating PDF Report...":"Menjana laporan PDF...","Currency changed to":"Mata wang ditukar kepada"
+            },
+            zh: {
+                "Personal Money Management":"个人理财管理","Daily Tracker, Savings Vault & Target Goals":"每日记录、储蓄金库与目标",
+                "Dark Mode":"深色模式","Light Mode":"浅色模式","Save Data":"保存数据","Export My Log (PDF)":"导出我的记录 (PDF)","Reset":"重置",
+                "Baseline Income":"基础收入","Fixed income baseline":"固定收入基准","Total Income":"总收入","Base + Additional Incomes":"基础 + 额外收入",
+                "Total Expenses":"总支出","Needs + Wants Spent":"已花费的必需 + 想要","Cash in Wallet":"钱包现金","Net Balance after Deductions":"扣除后的净余额",
+                "Spending & Allocation Breakdown":"支出与分配明细","Category":"类别","Amount":"金额","% Allocation":"分配比例","Needs":"必需","Wants":"想要","Savings & Goals":"储蓄与目标",
+                "Log Daily Entry":"记录每日条目","Date":"日期","Type":"类型","Item Description":"项目说明","Amount (":"金额 (",
+                "Need (Expense)":"必需（支出）","Want (Expense)":"想要（支出）","Save (Savings / Goal)":"储蓄（储蓄 / 目标）","Income (+)":"收入 (+)",
+                "Deduct from Cash Balance (Wallet)?":"是否从钱包现金余额中扣除？","Yes (Deduct)":"是（扣除）","No (Keep Balance)":"否（保留余额）","Add Entry":"添加条目",
+                "Daily Money Log":"每日资金记录","Filter, search, and manage your logged transactions":"筛选、搜索并管理你的交易记录","All":"全部","Savings":"储蓄","Income":"收入",
+                "Expense / Save":"支出 / 储蓄","Action":"操作",
+                "General Savings Vault":"通用储蓄金库","Private stored savings stash":"私人储蓄存款","Total Vault Stash":"金库总额","Add":"添加",
+                "Target Goals Tracker":"目标追踪","Custom wish & dream items":"自定义心愿与梦想物品","Goal Item Name":"目标物品名称","Target Price (":"目标价格 (",
+                "Saved For Goal":"已为目标储蓄","Remaining needed:":"还需:",
+                "Personal Financial Report":"个人财务报告","Generated on:":"生成于:","Money Management App":"理财管理应用","Cash Remaining":"剩余现金",
+                "Spending Breakdown":"支出明细","Needs:":"必需:","Wants:":"想要:","Savings/Goals:":"储蓄/目标:","Transaction History Log":"交易历史记录","Item":"项目","Expense/Save":"支出/储蓄",
+                "No entries found.":"没有找到条目。","Deducted":"已扣除","No Deduct":"未扣除","Delete":"删除","Need":"必需","Want":"想要","Save":"储蓄",
+                "e.g. Water 10k, Boba...":"例如：水 10k、奶茶...","Search...":"搜索...",
+                "All data saved to Local Storage!":"所有数据已保存！","Log entry added!":"条目已添加！","Added to Savings Vault!":"已添加到储蓄金库！",
+                "Added to Goal Tracker!":"已添加到目标追踪！","Baseline Income updated!":"基础收入已更新！","Target Goal updated!":"目标已更新！",
+                "Entry deleted":"条目已删除","All data reset to initial defaults":"所有数据已重置为初始默认值","Generating PDF Report...":"正在生成 PDF 报告...","Currency changed to":"货币已更改为"
+            }
+        };
+
+        let lang = localStorage.getItem('pm_lang');
+        if (!LANGS[lang]) lang = 'en';
+
+        function t(key) {
+            return (DICT[lang] && DICT[lang][key]) || key;
+        }
+
+        function applyLang() {
+            document.documentElement.lang = lang;
+            document.title = t('Personal Money Management');
+
+            const sel = document.getElementById('lang-select');
+            if (!sel.options.length) {
+                sel.innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join('');
+            }
+            sel.value = lang;
+
+            // Translate every static text node (original English is remembered on the node)
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+                acceptNode(n) {
+                    const tag = n.parentNode.nodeName;
+                    return (tag === 'SCRIPT' || tag === 'STYLE') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach(n => {
+                if (n.__en === undefined) n.__en = n.nodeValue;
+                const key = n.__en.trim();
+                const tr = lang !== 'en' && key && DICT[lang][key];
+                n.nodeValue = tr ? n.__en.replace(key, tr) : n.__en;
+            });
+
+            document.getElementById('tx-desc').placeholder = t('e.g. Water 10k, Boba...');
+            document.getElementById('search-input').placeholder = t('Search...');
+        }
+
+        function setLang(code) {
+            lang = code;
+            localStorage.setItem('pm_lang', code);
+            render();
+            updateThemeUI();
+            updateCurrencyUI();
+            applyLang();
+        }
+
+        // ---------- Currency Support ----------
+        // [code, name, locale]
+        const CURRENCIES = [
+            ['USD','US Dollar','en-US'], ['EUR','Euro','de-DE'], ['GBP','British Pound','en-GB'],
+            ['JPY','Japanese Yen','ja-JP'], ['CNY','Chinese Yuan (RMB)','zh-CN'], ['IDR','Indonesian Rupiah','id-ID'],
+            ['MYR','Malaysian Ringgit','ms-MY'], ['SGD','Singapore Dollar','en-SG'], ['BND','Brunei Dollar','ms-BN'],
+            ['BWP','Botswana Pula','en-BW'], ['THB','Thai Baht','th-TH'], ['PHP','Philippine Peso','en-PH'],
+            ['VND','Vietnamese Dong','vi-VN'], ['INR','Indian Rupee','en-IN'], ['KRW','South Korean Won','ko-KR'],
+            ['HKD','Hong Kong Dollar','zh-HK'], ['TWD','New Taiwan Dollar','zh-TW'], ['AUD','Australian Dollar','en-AU'],
+            ['NZD','New Zealand Dollar','en-NZ'], ['CAD','Canadian Dollar','en-CA'], ['CHF','Swiss Franc','de-CH'],
+            ['SEK','Swedish Krona','sv-SE'], ['NOK','Norwegian Krone','nb-NO'], ['DKK','Danish Krone','da-DK'],
+            ['AED','UAE Dirham','en-AE'], ['SAR','Saudi Riyal','en-SA'], ['QAR','Qatari Riyal','en-QA'],
+            ['KWD','Kuwaiti Dinar','en-KW'], ['TRY','Turkish Lira','tr-TR'], ['RUB','Russian Ruble','ru-RU'],
+            ['BRL','Brazilian Real','pt-BR'], ['MXN','Mexican Peso','es-MX'], ['ARS','Argentine Peso','es-AR'],
+            ['CLP','Chilean Peso','es-CL'], ['COP','Colombian Peso','es-CO'], ['ZAR','South African Rand','en-ZA'],
+            ['EGP','Egyptian Pound','en-EG'], ['NGN','Nigerian Naira','en-NG'], ['KES','Kenyan Shilling','en-KE'],
+            ['PKR','Pakistani Rupee','en-PK'], ['BDT','Bangladeshi Taka','en-BD'], ['LKR','Sri Lankan Rupee','en-LK'],
+            ['ILS','Israeli Shekel','he-IL'], ['PLN','Polish Zloty','pl-PL'], ['CZK','Czech Koruna','cs-CZ'],
+            ['HUF','Hungarian Forint','hu-HU']
+        ].map(([code, name, locale]) => ({ code, name, locale }));
+
+        // Currencies normally shown without decimals
+        const ZERO_DECIMAL = ['IDR', 'JPY', 'KRW', 'VND', 'CLP', 'COP', 'HUF'];
+
+        let currencyCode = localStorage.getItem('pm_currency') || 'IDR';
+
+        function getCurrency() {
+            return CURRENCIES.find(c => c.code === currencyCode) || CURRENCIES[5];
+        }
+
+        function getCurrencySymbol() {
+            const c = getCurrency();
+            const parts = new Intl.NumberFormat(c.locale, { style: 'currency', currency: c.code }).formatToParts(0);
+            return parts.find(p => p.type === 'currency').value;
+        }
+
+        function updateCurrencyUI() {
+            const sel = document.getElementById('currency-select');
+            if (!sel.options.length) {
+                sel.innerHTML = CURRENCIES.map(c => `<option value="${c.code}">${c.code} – ${c.name}</option>`).join('');
+            }
+            sel.value = currencyCode;
+
+            document.querySelectorAll('.cur-symbol').forEach(el => el.innerText = getCurrencySymbol());
+            document.querySelectorAll('.cur-code').forEach(el => el.innerText = currencyCode);
+            document.getElementById('quick-vault-amount').placeholder = `${t('Amount')} (${currencyCode})`;
+            document.getElementById('quick-goal-amount').placeholder = `${t('Amount')} (${currencyCode})`;
+        }
+
+        // ---------- Live Exchange Rates ----------
+        // Amounts are stored internally in IDR; every other currency is converted from live rates.
+        const STORE_CODE = 'IDR';
+        const RATES_URL = 'https://open.er-api.com/v6/latest/USD';
+        let ratesCache = null;
+        try { ratesCache = JSON.parse(localStorage.getItem('pm_rates')); } catch (e) {}
+
+        // How many units of the selected currency equal 1 IDR
+        function getFactor() {
+            if (currencyCode === STORE_CODE) return 1;
+            const r = ratesCache && ratesCache.rates;
+            if (r && r[currencyCode] && r[STORE_CODE]) return r[currencyCode] / r[STORE_CODE];
+            return 1;
+        }
+        function decimalsFor(code) { return ZERO_DECIMAL.includes(code) ? 0 : 2; }
+        // Round UP (the tiny epsilon stops floating-point noise from bumping exact values)
+        function ceilTo(x, d) { const m = Math.pow(10, d); return Math.ceil(x * m - 1e-6) / m; }
+        function toDisplay(v) { return ceilTo(v * getFactor(), decimalsFor(currencyCode)); }
+        function toStore(v) { return v / getFactor(); }
+
+        async function fetchRates(force) {
+            if (!force && ratesCache && ratesCache.t && Date.now() - ratesCache.t < 3600 * 1000) return true;
+            try {
+                const res = await fetch(RATES_URL);
+                const data = await res.json();
+                if (data.result === 'success' && data.rates) {
+                    ratesCache = { rates: data.rates, t: Date.now() };
+                    localStorage.setItem('pm_rates', JSON.stringify(ratesCache));
+                    return true;
+                }
+            } catch (e) { console.warn('Rate fetch failed', e); }
+            return !!(ratesCache && ratesCache.rates);
+        }
+
+        function updateRateInfo() {
+            const el = document.getElementById('rate-info');
+            if (currencyCode === STORE_CODE) { el.textContent = ''; return; }
+            const r = ratesCache && ratesCache.rates;
+            if (r && r[currencyCode] && r[STORE_CODE]) {
+                const idrPer = r[STORE_CODE] / r[currencyCode];
+                const time = new Date(ratesCache.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                el.textContent = `1 ${currencyCode} = ${Math.ceil(idrPer).toLocaleString('id-ID')} IDR · ${time}`;
+            } else {
+                el.textContent = '⚠ ' + t('Live rates unavailable, showing unconverted values');
+            }
+        }
+
+        // Show the saved base income / goal target in the selected currency
+        function refreshInputs() {
+            const bi = document.getElementById('base-income-input');
+            const gt = document.getElementById('goal-target');
+            if (document.activeElement !== bi) bi.value = toDisplay(baseIncome);
+            if (document.activeElement !== gt) gt.value = toDisplay(goalState.target);
+        }
+
+        async function setCurrency(code) {
+            currencyCode = code;
+            localStorage.setItem('pm_currency', code);
+            const ok = await fetchRates(false);
+            updateCurrencyUI();
+            refreshInputs();
+            render();
+            updateRateInfo();
+            if (!ok && code !== STORE_CODE) showToast(t('Live rates unavailable, showing unconverted values'), 'info');
+            else showToast(t('Currency changed to') + ' ' + code);
+        }
+
         window.onload = function() {
+            updateCurrencyUI();
             lucide.createIcons();
             
             // Apply Theme
@@ -530,16 +781,25 @@
             document.getElementById('tx-date').value = today;
 
             // Load inputs
-            document.getElementById('base-income-input').value = baseIncome;
+            refreshInputs();
             document.getElementById('goal-title').value = goalState.title;
-            document.getElementById('goal-target').value = goalState.target;
 
             initChart();
             render();
+            applyLang();
+            updateRateInfo();
+
+            const syncRates = (force) => fetchRates(force).then(() => { refreshInputs(); render(); updateRateInfo(); });
+            syncRates(false);
+            setInterval(() => syncRates(false), 30 * 60 * 1000);
         };
 
+        // Kept the name formatRp so the rest of the code works unchanged
         function formatRp(val) {
-            return 'Rp ' + Math.max(0, val).toLocaleString('id-ID');
+            const c = getCurrency();
+            const d = decimalsFor(c.code);
+            const opts = { style: 'currency', currency: c.code, minimumFractionDigits: d, maximumFractionDigits: d };
+            return new Intl.NumberFormat(c.locale, opts).format(toDisplay(Math.max(0, val)));
         }
 
         // Show Toast Notification
@@ -568,7 +828,7 @@
         // Explicit Save Button Trigger
         function manualSaveData() {
             saveState();
-            showToast('All data saved to Local Storage!');
+            showToast(t('All data saved to Local Storage!'));
         }
 
         function saveState() {
@@ -595,10 +855,10 @@
             const text = document.getElementById('theme-text');
             if (isDarkMode) {
                 icon.setAttribute('data-lucide', 'sun');
-                text.innerText = 'Light Mode';
+                text.innerText = t('Light Mode');
             } else {
                 icon.setAttribute('data-lucide', 'moon');
-                text.innerText = 'Dark Mode';
+                text.innerText = t('Dark Mode');
             }
             lucide.createIcons();
         }
@@ -735,7 +995,7 @@
             filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-stone-400 dark:text-stone-500">No entries found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-stone-400 dark:text-stone-500">${t('No entries found.')}</td></tr>`;
                 return;
             }
 
@@ -750,14 +1010,14 @@
                     tx.type === 'Save' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' :
                     'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
 
-                const deductLabel = tx.type === 'Save' ? (tx.deduct !== false ? ' (Deducted)' : ' (No Deduct)') : '';
+                const deductLabel = tx.type === 'Save' ? (tx.deduct !== false ? ' (' + t('Deducted') + ')' : ' (' + t('No Deduct') + ')') : '';
 
                 tr.innerHTML = `
                     <td class="py-3.5 px-4 font-mono text-stone-500 dark:text-stone-400 text-[11px]">${tx.date}</td>
                     <td class="py-3.5 px-4 font-semibold text-sand-900 dark:text-white">${escapeHtml(tx.desc)}</td>
                     <td class="py-3.5 px-4">
                         <span class="inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-md border ${badgeColor}">
-                            ${tx.type}${deductLabel}
+                            ${t(tx.type)}${deductLabel}
                         </span>
                     </td>
                     <td class="py-3.5 px-4 text-right font-semibold ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-300 dark:text-stone-600'}">
@@ -767,8 +1027,8 @@
                         ${!isIncome ? formatRp(tx.amount) : '-'}
                     </td>
                     <td class="py-3.5 px-4 text-center">
-                        <button onclick="deleteTransaction('${tx.id}')" class="p-1.5 text-stone-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors" title="Delete">
-                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        <button onclick="deleteTransaction('${tx.id}')" class="p-1.5 text-stone-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors" title="${t('Delete')}">
+                            ${window.__noIcons ? '<span class="text-[11px] font-semibold px-1">' + t('Delete') + '</span>' : '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>'}
                         </button>
                     </td>
                 `;
@@ -781,7 +1041,7 @@
             const date = document.getElementById('tx-date').value;
             const type = document.getElementById('tx-type').value;
             const desc = document.getElementById('tx-desc').value.trim();
-            const amount = parseFloat(document.getElementById('tx-amount').value);
+            const amount = toStore(parseFloat(document.getElementById('tx-amount').value));
             const deduct = document.querySelector('input[name="tx-deduct"]:checked').value === 'yes';
 
             if (!amount || amount <= 0) return;
@@ -797,7 +1057,7 @@
             });
 
             saveState();
-            showToast('Log entry added!');
+            showToast(t('Log entry added!'));
 
             document.getElementById('tx-desc').value = '';
             document.getElementById('tx-amount').value = '';
@@ -806,7 +1066,7 @@
         function handleQuickVaultSave(e) {
             e.preventDefault();
             const input = document.getElementById('quick-vault-amount');
-            const amount = parseFloat(input.value);
+            const amount = toStore(parseFloat(input.value));
             if (!amount || amount <= 0) return;
 
             transactions.push({
@@ -821,13 +1081,13 @@
 
             input.value = '';
             saveState();
-            showToast('Added to Savings Vault!');
+            showToast(t('Added to Savings Vault!'));
         }
 
         function handleQuickGoalSave(e) {
             e.preventDefault();
             const input = document.getElementById('quick-goal-amount');
-            const amount = parseFloat(input.value);
+            const amount = toStore(parseFloat(input.value));
             if (!amount || amount <= 0) return;
 
             transactions.push({
@@ -842,15 +1102,15 @@
 
             input.value = '';
             saveState();
-            showToast('Added to Goal Tracker!');
+            showToast(t('Added to Goal Tracker!'));
         }
 
         function updateBaseIncome() {
             const val = parseFloat(document.getElementById('base-income-input').value);
             if (!isNaN(val) && val >= 0) {
-                baseIncome = val;
+                baseIncome = toStore(val);
                 saveState();
-                showToast('Baseline Income updated!');
+                showToast(t('Baseline Income updated!'));
             }
         }
 
@@ -859,16 +1119,16 @@
             const target = parseFloat(document.getElementById('goal-target').value);
 
             if (title) goalState.title = title;
-            if (!isNaN(target) && target > 0) goalState.target = target;
+            if (!isNaN(target) && target > 0) goalState.target = toStore(target);
 
             saveState();
-            showToast('Target Goal updated!');
+            showToast(t('Target Goal updated!'));
         }
 
         function deleteTransaction(id) {
             transactions = transactions.filter(t => t.id !== id);
             saveState();
-            showToast('Entry deleted');
+            showToast(t('Entry deleted'));
         }
 
         function setFilter(category) {
@@ -888,17 +1148,16 @@
             goalState = { ...DEFAULT_GOAL };
             transactions = [ ...DEFAULT_TRANSACTIONS ];
 
-            document.getElementById('base-income-input').value = baseIncome;
+            refreshInputs();
             document.getElementById('goal-title').value = goalState.title;
-            document.getElementById('goal-target').value = goalState.target;
 
             saveState();
-            showToast('All data reset to initial defaults');
+            showToast(t('All data reset to initial defaults'));
         }
 
         function exportPDFReport() {
             // Populate PDF Template Data
-            document.getElementById('pdf-report-date').innerText = new Date().toLocaleDateString('id-ID');
+            document.getElementById('pdf-report-date').innerText = new Date().toLocaleDateString(LANGS[lang].locale);
             document.getElementById('pdf-total-income').innerText = document.getElementById('stat-total-income').innerText;
             document.getElementById('pdf-total-expenses').innerText = document.getElementById('stat-total-expenses').innerText;
             document.getElementById('pdf-net-remaining').innerText = document.getElementById('stat-net-remaining').innerText;
@@ -916,7 +1175,7 @@
                 tr.innerHTML = `
                     <td class="py-1.5">${tx.date}</td>
                     <td class="py-1.5 font-semibold">${escapeHtml(tx.desc)}</td>
-                    <td class="py-1.5">${tx.type}</td>
+                    <td class="py-1.5">${t(tx.type)}</td>
                     <td class="py-1.5 text-right">${isIncome ? formatRp(tx.amount) : '-'}</td>
                     <td class="py-1.5 text-right">${!isIncome ? formatRp(tx.amount) : '-'}</td>
                 `;
@@ -934,7 +1193,7 @@
                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
             };
 
-            showToast('Generating PDF Report...');
+            showToast(t('Generating PDF Report...'));
             html2pdf().set(opt).from(element).save().then(() => {
                 element.classList.add('hidden');
             });
