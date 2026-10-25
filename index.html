@@ -63,15 +63,15 @@
             <!-- Controls Header -->
             <div class="flex flex-wrap items-center gap-2">
                 <!-- Currency Selector -->
-                <div class="flex items-center space-x-1 bg-slate-100 dark:bg-slate-700 px-2 py-1.5 rounded-lg">
+                <div class="flex items-center space-x-1 bg-slate-100 dark:bg-slate-700 px-2.5 py-1.5 rounded-lg">
                     <i class="fa-solid fa-coins text-slate-400 text-xs"></i>
                     <select id="currency-select" onchange="changeCurrency(this.value)" class="bg-transparent text-xs font-semibold focus:outline-none cursor-pointer">
+                        <option value="Rp">Rp (Rupiah)</option>
                         <option value="$">USD ($)</option>
                         <option value="€">EUR (€)</option>
                         <option value="£">GBP (£)</option>
                         <option value="RM">MYR (RM)</option>
                         <option value="₱">PHP (₱)</option>
-                        <option value="Rp">IDR (Rp)</option>
                         <option value="₹">INR (₹)</option>
                         <option value="¥">JPY (¥)</option>
                         <option value="₩">KRW (₩)</option>
@@ -109,7 +109,7 @@
                     <span>Baseline Income</span>
                     <button onclick="editIncome()" class="text-indigo-600 dark:text-indigo-400 hover:underline"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
                 </div>
-                <div class="text-2xl font-bold" id="card-income"><span class="curr">$</span>0.00</div>
+                <div class="text-2xl font-bold" id="card-income"><span class="curr">Rp</span>0</div>
                 <span class="text-[10px] text-slate-400">Base Starting Funds</span>
             </div>
 
@@ -119,7 +119,7 @@
                     <span>Needs</span>
                     <i class="fa-solid fa-house"></i>
                 </div>
-                <div class="text-2xl font-bold" id="card-needs"><span class="curr">$</span>0.00</div>
+                <div class="text-2xl font-bold" id="card-needs"><span class="curr">Rp</span>0</div>
                 <span class="text-[10px] text-slate-400">Essential Expenses</span>
             </div>
 
@@ -129,7 +129,7 @@
                     <span>Wants</span>
                     <i class="fa-solid fa-bag-shopping"></i>
                 </div>
-                <div class="text-2xl font-bold" id="card-wants"><span class="curr">$</span>0.00</div>
+                <div class="text-2xl font-bold" id="card-wants"><span class="curr">Rp</span>0</div>
                 <span class="text-[10px] text-slate-400">Lifestyle Expenses</span>
             </div>
 
@@ -139,7 +139,7 @@
                     <span>Wallet Balance</span>
                     <i class="fa-solid fa-wallet"></i>
                 </div>
-                <div class="text-2xl font-bold" id="card-balance"><span class="curr">$</span>0.00</div>
+                <div class="text-2xl font-bold" id="card-balance"><span class="curr">Rp</span>0</div>
                 <span class="text-[10px] text-slate-400">Remaining Cash Available</span>
             </div>
         </div>
@@ -160,11 +160,11 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-medium mb-1">Description</label>
-                                <input type="text" id="desc" required placeholder="e.g. Groceries, Coffee, Salary" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="desc" required placeholder="e.g. Nasi Padang, Kopi" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium mb-1">Amount (<span class="curr">$</span>)</label>
-                                <input type="number" id="amount" step="0.01" required placeholder="0.00" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <label class="block text-xs font-medium mb-1">Amount (<span class="curr">Rp</span>)</label>
+                                <input type="number" id="amount" step="any" required placeholder="0" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             </div>
                         </div>
 
@@ -182,7 +182,6 @@
                                 <label class="block text-xs font-medium mb-1">Deposit Destination</label>
                                 <select id="savings-destination" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="general">General Savings Vault</option>
-                                    <!-- Dynamic Goals appended here -->
                                 </select>
                             </div>
                         </div>
@@ -246,7 +245,7 @@
                             <i class="fa-solid fa-vault text-emerald-500 text-lg"></i>
                             <h2 class="text-sm font-bold">General Savings Vault</h2>
                         </div>
-                        <span class="text-xs font-bold text-emerald-500" id="general-savings-val"><span class="curr">$</span>0.00</span>
+                        <span class="text-xs font-bold text-emerald-500" id="general-savings-val"><span class="curr">Rp</span>0</span>
                     </div>
                     <p class="text-[11px] text-slate-400">Untargeted general emergency funds saved.</p>
                 </div>
@@ -273,26 +272,23 @@
 
     <!-- JavaScript Logic -->
     <script>
-        // Data State Variables
         let state = {
-            currency: '$',
-            baselineIncome: 0.00,
+            currency: 'Rp',
+            baselineIncome: 0,
             transactions: [],
-            generalSavings: 0.00,
+            generalSavings: 0,
             goals: [
-                { id: '1', title: 'Emergency Fund', target: 1000, current: 250 }
+                { id: '1', title: 'Emergency Fund', target: 5000000, current: 1000000 }
             ]
         };
 
         let chart = null;
 
-        // Initialize App
         window.onload = function() {
             loadSavedData();
             initChart();
             updateUI();
             
-            // System Dark Mode Preference Check
             if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
             } else {
@@ -300,14 +296,12 @@
             }
         };
 
-        // Dark Mode Toggle Logic
         document.getElementById('theme-toggle').addEventListener('click', () => {
             document.documentElement.classList.toggle('dark');
             const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
             localStorage.setItem('theme', theme);
         });
 
-        // Toast Helper
         function showToast(msg) {
             const toast = document.getElementById('toast');
             document.getElementById('toast-message').innerText = msg;
@@ -317,20 +311,20 @@
             }, 2500);
         }
 
-        // Change Currency Symbol
         function changeCurrency(symbol) {
             state.currency = symbol;
             saveData(false);
             updateUI();
         }
 
-        // Update Dynamic UI & Totals
+        function formatNum(num) {
+            return Number(num).toLocaleString('id-ID');
+        }
+
         function updateUI() {
-            // Update currency indicators
-            document.querySelectorAll('.curr').forEach(el => el.innerText = state.currency);
+            document.querySelectorAll('.curr').forEach(el => el.innerText = state.currency + ' ');
             document.getElementById('currency-select').value = state.currency;
 
-            // Compute Financial Totals
             let needs = 0, wants = 0, addedIncome = 0, walletSavingsDeductions = 0;
             
             state.transactions.forEach(t => {
@@ -343,14 +337,12 @@
             const totalIncome = state.baselineIncome + addedIncome;
             const remainingBalance = totalIncome - (needs + wants + walletSavingsDeductions);
 
-            // Render Cards
-            document.getElementById('card-income').innerText = `${state.currency}${totalIncome.toFixed(2)}`;
-            document.getElementById('card-needs').innerText = `${state.currency}${needs.toFixed(2)}`;
-            document.getElementById('card-wants').innerText = `${state.currency}${wants.toFixed(2)}`;
-            document.getElementById('card-balance').innerText = `${state.currency}${remainingBalance.toFixed(2)}`;
-            document.getElementById('general-savings-val').innerText = `${state.currency}${state.generalSavings.toFixed(2)}`;
+            document.getElementById('card-income').innerText = state.currency + ' ' + formatNum(totalIncome);
+            document.getElementById('card-needs').innerText = state.currency + ' ' + formatNum(needs);
+            document.getElementById('card-wants').innerText = state.currency + ' ' + formatNum(wants);
+            document.getElementById('card-balance').innerText = state.currency + ' ' + formatNum(remainingBalance);
+            document.getElementById('general-savings-val').innerText = state.currency + ' ' + formatNum(state.generalSavings);
 
-            // Populate Goals Dropdown Options
             const destinationSelect = document.getElementById('savings-destination');
             destinationSelect.innerHTML = `<option value="general">General Savings Vault</option>`;
             state.goals.forEach(g => {
@@ -362,7 +354,6 @@
             updateChart(needs, wants);
         }
 
-        // Form Visibility Logic
         function toggleDeductOption() {
             const cat = document.getElementById('category').value;
             const deductBox = document.getElementById('deduct-toggle-container');
@@ -377,7 +368,6 @@
             }
         }
 
-        // Add New Transaction Entry
         function addTransaction(e) {
             e.preventDefault();
             const desc = document.getElementById('desc').value;
@@ -410,7 +400,6 @@
             toggleDeductOption();
         }
 
-        // Render Transaction History Log
         function renderLogs() {
             const list = document.getElementById('transaction-list');
             list.innerHTML = '';
@@ -432,7 +421,7 @@
                         <td class="py-2.5 px-2 text-slate-400">${t.date}</td>
                         <td class="py-2.5 px-2 font-medium">${t.desc}</td>
                         <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}">${t.category}</span></td>
-                        <td class="py-2.5 px-2 text-right font-bold">${state.currency}${t.amount.toFixed(2)}</td>
+                        <td class="py-2.5 px-2 text-right font-bold">${state.currency} ${formatNum(t.amount)}</td>
                         <td class="py-2.5 px-2 text-center">
                             <button onclick="deleteLog('${t.id}')" class="text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button>
                         </td>
@@ -441,7 +430,6 @@
             });
         }
 
-        // Render Specific Goals
         function renderGoals() {
             const container = document.getElementById('goals-list');
             container.innerHTML = '';
@@ -452,13 +440,13 @@
             }
 
             state.goals.forEach(g => {
-                const pct = Math.min(100, Math.round((g.current / g.target) * 100));
+                const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
                 container.innerHTML += `
                     <div class="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
                         <div class="flex justify-between items-center mb-1 text-xs">
                             <span class="font-bold">${g.title}</span>
                             <div class="space-x-1">
-                                <span class="text-slate-500">${state.currency}${g.current.toFixed(0)} / ${state.currency}${g.target.toFixed(0)}</span>
+                                <span class="text-slate-500">${state.currency} ${formatNum(g.current)} / ${formatNum(g.target)}</span>
                                 <button onclick="deleteGoal('${g.id}')" class="text-slate-400 hover:text-rose-500 text-[10px] ml-1"><i class="fa-solid fa-xmark"></i></button>
                             </div>
                         </div>
@@ -471,7 +459,6 @@
             });
         }
 
-        // Chart Initialization
         function initChart() {
             const ctx = document.getElementById('financeChart').getContext('2d');
             chart = new Chart(ctx, {
@@ -492,7 +479,7 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return ' ' + context.label + ': ' + state.currency + context.raw.toFixed(2);
+                                    return ' ' + context.label + ': ' + state.currency + ' ' + formatNum(context.raw);
                                 }
                             }
                         }
@@ -510,7 +497,6 @@
             }
         }
 
-        // Actions & Prompts
         function editIncome() {
             const val = prompt('Enter your baseline income amount:', state.baselineIncome);
             if (val !== null && !isNaN(val)) {
@@ -558,7 +544,6 @@
             }
         }
 
-        // Storage Management
         function saveData(showToastNotification = false) {
             localStorage.setItem('money_manager_data', JSON.stringify(state));
             if (showToastNotification) showToast("Data saved successfully!");
@@ -573,7 +558,6 @@
             }
         }
 
-        // Backup & Restore
         function exportJSON() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
             const dlAnchorElem = document.createElement('a');
@@ -601,7 +585,6 @@
             if(event.target.files[0]) fileReader.readAsText(event.target.files[0]);
         }
 
-        // Export PDF Report
         function exportPDF() {
             const element = document.getElementById('report-container');
             const opt = {
