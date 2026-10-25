@@ -1,30 +1,52 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Money Management Dashboard</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Personal Money Management</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN -->
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- html2pdf CDN -->
+    <!-- html2pdf.js for PDF Generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- FontAwesome CDN -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
                     colors: {
-                        brand: {
-                            base: '#0f172a',
-                            card: '#1e293b',
-                            accent: '#6366f1',
-                            needs: '#ef4444',
-                            wants: '#f59e0b',
-                            savings: '#10b981'
+                        sand: {
+                            50: '#FAF9F6',
+                            100: '#F3F1EA',
+                            200: '#E6E1D5',
+                            300: '#D5CDBF',
+                            800: '#433E38',
+                            900: '#2C2925'
+                        },
+                        sage: {
+                            50: '#F4F7F4',
+                            100: '#E3EAE3',
+                            200: '#C7D5C8',
+                            500: '#738D75',
+                            600: '#5C725E',
+                            700: '#475848',
+                            800: '#364337'
+                        },
+                        darkbg: {
+                            900: '#121316',
+                            800: '#1A1C20',
+                            700: '#24272D',
+                            600: '#2E323A'
                         }
                     }
                 }
@@ -32,569 +54,899 @@
         }
     </script>
     <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 3px; }
-        #toast { transition: opacity 0.3s ease, transform 0.3s ease; }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #E6E1D5;
+            border-radius: 9999px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #2E323A;
+        }
+        /* Custom Print Styling for PDF Export */
+        @media print {
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
+<body class="h-full font-sans antialiased bg-[#FAF9F6] text-[#2C2925] dark:bg-darkbg-900 dark:text-stone-200 transition-colors duration-300">
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-10 opacity-0 pointer-events-none bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-lg shadow-xl flex items-center space-x-2 border border-slate-700 dark:border-slate-200">
-        <i class="fa-solid fa-circle-check text-emerald-500"></i>
-        <span id="toast-message" class="text-sm font-medium">Data saved successfully!</span>
-    </div>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <div class="max-w-7xl mx-auto px-4 py-6 space-y-6" id="report-container">
+    <div class="min-h-screen flex flex-col max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
         
-        <!-- Navbar Header -->
-        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
-                    <i class="fa-solid fa-wallet"></i>
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-sand-200/60 dark:border-darkbg-700">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-sage-500"></span>
+                    <h1 class="text-2xl font-bold tracking-tight text-sand-900 dark:text-white">Personal Money Management</h1>
                 </div>
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight">Money Manager</h1>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Personal Finance & Vault Tracker</p>
-                </div>
+                <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5 pl-4">Daily Tracker, Savings Vault & Target Goals</p>
             </div>
-
-            <!-- Controls Header -->
+            
             <div class="flex flex-wrap items-center gap-2">
-                <!-- Currency Selector -->
-                <div class="flex items-center space-x-1 bg-slate-100 dark:bg-slate-700 px-2.5 py-1.5 rounded-lg">
-                    <i class="fa-solid fa-coins text-slate-400 text-xs"></i>
-                    <select id="currency-select" onchange="changeCurrency(this.value)" class="bg-transparent text-xs font-semibold focus:outline-none cursor-pointer">
-                        <option value="Rp">Rp (Rupiah)</option>
-                        <option value="$">USD ($)</option>
-                        <option value="€">EUR (€)</option>
-                        <option value="£">GBP (£)</option>
-                        <option value="RM">MYR (RM)</option>
-                        <option value="₱">PHP (₱)</option>
-                        <option value="₹">INR (₹)</option>
-                        <option value="¥">JPY (¥)</option>
-                        <option value="₩">KRW (₩)</option>
-                    </select>
-                </div>
-
-                <button onclick="saveData(true)" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 shadow-sm">
-                    <i class="fa-solid fa-floppy-disk"></i> Save
-                </button>
-
-                <button onclick="exportJSON()" title="Export JSON File" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-1">
-                    <i class="fa-solid fa-download"></i> Backup
-                </button>
-                <button onclick="importJSON()" title="Import JSON File" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-1">
-                    <i class="fa-solid fa-upload"></i> Import
-                </button>
-
-                <button onclick="exportPDF()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition flex items-center gap-1">
-                    <i class="fa-solid fa-file-pdf"></i> PDF
-                </button>
-
                 <!-- Theme Toggle Button -->
-                <button id="theme-toggle" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">
-                    <i class="fa-solid fa-moon dark:hidden"></i>
-                    <i class="fa-solid fa-sun hidden dark:block"></i>
+                <button onclick="toggleTheme()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
+                    <i id="theme-icon" data-lucide="moon" class="w-3.5 h-3.5"></i>
+                    <span id="theme-text">Dark Mode</span>
+                </button>
+
+                <!-- Explicit Save Data Button -->
+                <button onclick="manualSaveData()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 dark:bg-sage-500 dark:hover:bg-sage-600 rounded-xl transition-all shadow-xs">
+                    <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                    Save Data
+                </button>
+
+                <!-- Export PDF Report Button -->
+                <button onclick="exportPDFReport()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5 text-sage-600 dark:text-sage-400"></i>
+                    Export My Log (PDF)
+                </button>
+
+                <!-- Reset Data Button -->
+                <button onclick="resetData()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-400 dark:text-stone-500 hover:text-rose-600 dark:hover:text-rose-400 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-rose-50/60 dark:hover:bg-rose-950/30 transition-all shadow-xs">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    Reset
                 </button>
             </div>
         </header>
 
-        <!-- Dynamic Overview Cards -->
+        <!-- Top Stat Cards (Baseline Income & Balances) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- Baseline Income Card -->
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm relative group">
-                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
-                    <span>Baseline Income</span>
-                    <button onclick="editIncome()" class="text-indigo-600 dark:text-indigo-400 hover:underline"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            
+            <!-- Editable Baseline Income Card -->
+            <div class="bg-white dark:bg-darkbg-800 p-5 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between text-stone-500 dark:text-stone-400 mb-2">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Baseline Income</span>
+                    <div class="p-1.5 bg-sage-100 text-sage-700 dark:bg-sage-900/50 dark:text-sage-400 rounded-lg">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    </div>
                 </div>
-                <div class="text-2xl font-bold" id="card-income"><span class="curr">Rp</span>0</div>
-                <span class="text-[10px] text-slate-400">Base Starting Funds</span>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-sm font-semibold text-stone-400">Rp</span>
+                        <input type="number" id="base-income-input" onchange="updateBaseIncome()" class="w-full text-xl font-bold text-sand-900 dark:text-white bg-sand-50/70 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-sage-500/40 transition-all">
+                    </div>
+                    <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1.5">Fixed income baseline</p>
+                </div>
             </div>
 
-            <!-- Total Needs Card -->
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
-                <div class="text-xs font-medium text-rose-500 mb-1 flex items-center justify-between">
-                    <span>Needs</span>
-                    <i class="fa-solid fa-house"></i>
+            <!-- Total Income Card -->
+            <div class="bg-white dark:bg-darkbg-800 p-5 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between text-stone-500 dark:text-stone-400 mb-2">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Total Income</span>
+                    <div class="p-1.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 rounded-lg">
+                        <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
+                    </div>
                 </div>
-                <div class="text-2xl font-bold" id="card-needs"><span class="curr">Rp</span>0</div>
-                <span class="text-[10px] text-slate-400">Essential Expenses</span>
+                <div>
+                    <div class="text-2xl font-bold tracking-tight text-sand-900 dark:text-white" id="stat-total-income">Rp 0</div>
+                    <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Base + Additional Incomes</p>
+                </div>
             </div>
 
-            <!-- Total Wants Card -->
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
-                <div class="text-xs font-medium text-amber-500 mb-1 flex items-center justify-between">
-                    <span>Wants</span>
-                    <i class="fa-solid fa-bag-shopping"></i>
+            <!-- Total Expenses Card -->
+            <div class="bg-white dark:bg-darkbg-800 p-5 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between text-stone-500 dark:text-stone-400 mb-2">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Total Expenses</span>
+                    <div class="p-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 rounded-lg">
+                        <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                    </div>
                 </div>
-                <div class="text-2xl font-bold" id="card-wants"><span class="curr">Rp</span>0</div>
-                <span class="text-[10px] text-slate-400">Lifestyle Expenses</span>
+                <div>
+                    <div class="text-2xl font-bold tracking-tight text-sand-900 dark:text-white" id="stat-total-expenses">Rp 0</div>
+                    <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Needs + Wants Spent</p>
+                </div>
             </div>
 
-            <!-- Current Wallet Balance Card -->
-            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
-                <div class="text-xs font-medium text-emerald-500 mb-1 flex items-center justify-between">
-                    <span>Wallet Balance</span>
-                    <i class="fa-solid fa-wallet"></i>
+            <!-- Net Available Cash Card -->
+            <div class="bg-white dark:bg-darkbg-800 p-5 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between text-stone-500 dark:text-stone-400 mb-2">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Cash in Wallet</span>
+                    <div class="p-1.5 bg-sage-50 text-sage-600 dark:bg-sage-950/50 dark:text-sage-400 rounded-lg">
+                        <i data-lucide="wallet" class="w-4 h-4"></i>
+                    </div>
                 </div>
-                <div class="text-2xl font-bold" id="card-balance"><span class="curr">Rp</span>0</div>
-                <span class="text-[10px] text-slate-400">Remaining Cash Available</span>
+                <div>
+                    <div class="text-2xl font-bold tracking-tight text-sand-900 dark:text-white" id="stat-net-remaining">Rp 0</div>
+                    <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Net Balance after Deductions</p>
+                </div>
             </div>
+
         </div>
 
         <!-- Main Workspace Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-1">
             
-            <!-- Left Panel: Logging & Log History -->
-            <div class="lg:col-span-2 space-y-6">
+            <!-- LEFT & CENTER PANEL (8 Columns) -->
+            <main class="lg:col-span-8 flex flex-col gap-6">
                 
-                <!-- Log Entry Form Card -->
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
-                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-plus-circle text-indigo-500"></i> Log New Transaction
+                <!-- Needs vs Wants vs Save Doughnut Breakdown -->
+                <div class="bg-white dark:bg-darkbg-800 p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs">
+                    <h2 class="text-base font-bold text-sand-900 dark:text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-sage-600 dark:text-sage-400"></i>
+                        Spending & Allocation Breakdown
                     </h2>
 
-                    <form id="transaction-form" onsubmit="addTransaction(event)" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-medium mb-1">Description</label>
-                                <input type="text" id="desc" required placeholder="e.g. Nasi Padang, Kopi" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium mb-1">Amount (<span class="curr">Rp</span>)</label>
-                                <input type="number" id="amount" step="any" required placeholder="0" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                        <div class="md:col-span-5 flex justify-center items-center relative h-48">
+                            <canvas id="spendingChart"></canvas>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-7 overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="border-b border-sand-100 dark:border-darkbg-700 text-stone-400 dark:text-stone-500 uppercase text-[10px] font-bold tracking-wider">
+                                        <th class="pb-2">Category</th>
+                                        <th class="pb-2 text-right">Amount</th>
+                                        <th class="pb-2 text-right">% Allocation</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-sand-100 dark:divide-darkbg-700 text-stone-700 dark:text-stone-300">
+                                    <tr>
+                                        <td class="py-2.5 font-medium flex items-center gap-2">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-[#5C725E]"></span>
+                                            Needs
+                                        </td>
+                                        <td class="py-2.5 text-right font-semibold" id="table-needs-amount">Rp 0</td>
+                                        <td class="py-2.5 text-right text-stone-400 dark:text-stone-500" id="table-needs-pct">0%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 font-medium flex items-center gap-2">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-[#E07A5F]"></span>
+                                            Wants
+                                        </td>
+                                        <td class="py-2.5 text-right font-semibold" id="table-wants-amount">Rp 0</td>
+                                        <td class="py-2.5 text-right text-stone-400 dark:text-stone-500" id="table-wants-pct">0%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2.5 font-medium flex items-center gap-2">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-[#3D405B]"></span>
+                                            Savings & Goals
+                                        </td>
+                                        <td class="py-2.5 text-right font-semibold" id="table-save-amount">Rp 0</td>
+                                        <td class="py-2.5 text-right text-stone-400 dark:text-stone-500" id="table-save-pct">0%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Transaction Form -->
+                <div class="bg-white dark:bg-darkbg-800 p-5 sm:p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs">
+                    <h2 class="text-base font-bold text-sand-900 dark:text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-sage-600 dark:text-sage-400"></i>
+                        Log Daily Entry
+                    </h2>
+                    
+                    <form id="transaction-form" onsubmit="handleAddTransaction(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                            <!-- Date -->
                             <div>
-                                <label class="block text-xs font-medium mb-1">Category</label>
-                                <select id="category" onchange="toggleDeductOption()" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Date</label>
+                                <input type="date" id="tx-date" required class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all">
+                            </div>
+
+                            <!-- Type -->
+                            <div>
+                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Type</label>
+                                <select id="tx-type" onchange="toggleDeductOption()" class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all font-medium">
+                                    <option value="Need">Need (Expense)</option>
+                                    <option value="Want">Want (Expense)</option>
+                                    <option value="Save">Save (Savings / Goal)</option>
                                     <option value="Income">Income (+)</option>
-                                    <option value="Needs">Needs (Essential)</option>
-                                    <option value="Wants">Wants (Lifestyle)</option>
-                                    <option value="Savings">Save (Savings Vault / Goal)</option>
                                 </select>
                             </div>
-                            <div id="target-savings-container" class="hidden">
-                                <label class="block text-xs font-medium mb-1">Deposit Destination</label>
-                                <select id="savings-destination" class="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                    <option value="general">General Savings Vault</option>
-                                </select>
+
+                            <!-- Description -->
+                            <div>
+                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Item Description</label>
+                                <input type="text" id="tx-desc" placeholder="e.g. Water 10k, Boba..." required class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all">
+                            </div>
+
+                            <!-- Amount -->
+                            <div>
+                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Amount (Rp)</label>
+                                <input type="number" id="tx-amount" min="1" placeholder="10000" required class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all">
                             </div>
                         </div>
 
-                        <!-- Savings Deduction Toggle -->
-                        <div id="deduct-toggle-container" class="hidden bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700 flex items-center justify-between">
-                            <span class="text-xs font-medium text-slate-600 dark:text-slate-300">Deduct from Cash Balance (Wallet)?</span>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="deduct-wallet" class="sr-only peer" checked>
-                                <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:peer-focus:ring-indigo-800 peer-checked:bg-indigo-600"></div>
-                            </label>
+                        <!-- Savings Deduction Option (Appears when Type is Save) -->
+                        <div id="deduct-toggle-container" class="hidden p-3 bg-sand-50 dark:bg-darkbg-700/60 rounded-xl border border-sand-200 dark:border-darkbg-600 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 text-xs text-stone-700 dark:text-stone-300">
+                                <i data-lucide="help-circle" class="w-4 h-4 text-sage-600 dark:text-sage-400"></i>
+                                <span>Deduct from Cash Balance (Wallet)?</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                    <input type="radio" name="tx-deduct" value="yes" checked class="text-sage-600 focus:ring-sage-500">
+                                    <span>Yes (Deduct)</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                                    <input type="radio" name="tx-deduct" value="no" class="text-sage-600 focus:ring-sage-500">
+                                    <span>No (Keep Balance)</span>
+                                </label>
+                            </div>
                         </div>
 
-                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl text-sm transition shadow-sm">
-                            Add Transaction Entry
-                        </button>
+                        <div class="flex justify-end pt-1">
+                            <button type="submit" class="w-full sm:w-auto px-6 py-2.5 text-xs font-semibold text-white bg-sand-900 hover:bg-black dark:bg-sage-600 dark:hover:bg-sage-500 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                Add Entry
+                            </button>
+                        </div>
                     </form>
                 </div>
 
-                <!-- Transaction History Table -->
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Daily Money Log</h2>
-                        <button onclick="clearLogs()" class="text-xs text-rose-500 hover:underline">Clear History</button>
+                <!-- Daily Money Log Table -->
+                <div class="bg-white dark:bg-darkbg-800 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs overflow-hidden">
+                    
+                    <div class="p-5 border-b border-sand-100 dark:border-darkbg-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-base font-bold text-sand-900 dark:text-white">Daily Money Log</h2>
+                            <p class="text-xs text-stone-400 dark:text-stone-500 mt-0.5">Filter, search, and manage your logged transactions</p>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- Filter Pills -->
+                            <div class="flex bg-sand-100/70 dark:bg-darkbg-700 p-1 rounded-xl gap-1 border border-sand-200/50 dark:border-darkbg-600">
+                                <button onclick="setFilter('All')" id="filter-All" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-darkbg-800 text-sand-900 dark:text-white shadow-xs">All</button>
+                                <button onclick="setFilter('Need')" id="filter-Need" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white">Needs</button>
+                                <button onclick="setFilter('Want')" id="filter-Want" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white">Wants</button>
+                                <button onclick="setFilter('Save')" id="filter-Save" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white">Savings</button>
+                                <button onclick="setFilter('Income')" id="filter-Income" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white">Income</button>
+                            </div>
+
+                            <!-- Search -->
+                            <div class="relative w-full sm:w-44">
+                                <i data-lucide="search" class="w-3.5 h-3.5 text-stone-400 absolute left-3 top-2.5"></i>
+                                <input type="text" id="search-input" oninput="render()" placeholder="Search..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-sand-50/70 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200">
+                            </div>
+                        </div>
                     </div>
-                    <div class="overflow-x-auto max-h-72 custom-scrollbar">
-                        <table class="w-full text-left border-collapse text-xs">
+
+                    <!-- Table Container -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400 font-medium">
-                                    <th class="py-2 px-2">Date</th>
-                                    <th class="py-2 px-2">Description</th>
-                                    <th class="py-2 px-2">Category</th>
-                                    <th class="py-2 px-2 text-right">Amount</th>
-                                    <th class="py-2 px-2 text-center">Action</th>
+                                <tr class="bg-sand-50/70 dark:bg-darkbg-700/50 border-b border-sand-100 dark:border-darkbg-700 text-[10px] font-bold tracking-wider text-stone-400 dark:text-stone-500 uppercase">
+                                    <th class="py-3 px-4">Date</th>
+                                    <th class="py-3 px-4">Item Description</th>
+                                    <th class="py-3 px-4">Type</th>
+                                    <th class="py-3 px-4 text-right">Income</th>
+                                    <th class="py-3 px-4 text-right">Expense / Save</th>
+                                    <th class="py-3 px-4 text-center">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="transaction-list" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                                <!-- Dynamic Entries -->
+                            <tbody id="transaction-rows" class="divide-y divide-sand-100 dark:divide-darkbg-700 text-xs text-stone-700 dark:text-stone-300">
+                                <!-- Dynamic Rows -->
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-            </div>
+            </main>
 
-            <!-- Right Panel: Dynamic Chart & Savings / Goal Vaults -->
-            <div class="space-y-6">
+            <!-- RIGHT PANEL: Separated Savings Vault & Target Goals Tracker (4 Columns) -->
+            <aside class="lg:col-span-4 flex flex-col gap-6">
                 
-                <!-- Doughnut Breakdown Chart Card -->
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
-                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">Allocation Breakdown</h2>
-                    <div class="relative w-full h-48 flex justify-center items-center">
-                        <canvas id="financeChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- General Savings Vault Card -->
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center space-x-2">
-                            <i class="fa-solid fa-vault text-emerald-500 text-lg"></i>
-                            <h2 class="text-sm font-bold">General Savings Vault</h2>
+                <!-- 1. GENERAL SAVINGS VAULT -->
+                <div class="bg-white dark:bg-darkbg-800 p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="p-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 rounded-xl">
+                            <i data-lucide="vault" class="w-5 h-5"></i>
                         </div>
-                        <span class="text-xs font-bold text-emerald-500" id="general-savings-val"><span class="curr">Rp</span>0</span>
+                        <div>
+                            <h2 class="text-base font-bold text-sand-900 dark:text-white">General Savings Vault</h2>
+                            <p class="text-xs text-stone-400 dark:text-stone-500">Private stored savings stash</p>
+                        </div>
                     </div>
-                    <p class="text-[11px] text-slate-400">Untargeted general emergency funds saved.</p>
+
+                    <div class="p-4 bg-sand-900 text-white dark:bg-darkbg-700 rounded-xl mb-4">
+                        <span class="text-[10px] text-stone-400 uppercase tracking-wider block">Total Vault Stash</span>
+                        <span class="text-2xl font-bold tracking-tight text-white" id="vault-total-display">Rp 0</span>
+                    </div>
+
+                    <!-- Quick Add to Vault -->
+                    <form onsubmit="handleQuickVaultSave(event)" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="quick-vault-amount" min="1" placeholder="Amount (Rp)" required class="w-full px-3 py-2 text-xs bg-sand-50 dark:bg-darkbg-900 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/30 text-sand-900 dark:text-white">
+                            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shrink-0 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
+                            </button>
+                        </div>
+                    </form>
                 </div>
 
-                <!-- Specific Goal Targets Tracker Card -->
-                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Target Goals</h2>
-                        <button onclick="promptAddGoal()" class="text-xs text-indigo-500 hover:underline font-semibold">+ Add Goal</button>
+                <!-- 2. SPECIFIC GOALS TRACKER -->
+                <div class="bg-white dark:bg-darkbg-800 p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs relative overflow-hidden">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="p-2 bg-sage-100 text-sage-700 dark:bg-sage-950/60 dark:text-sage-400 rounded-xl">
+                            <i data-lucide="target" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-sand-900 dark:text-white">Target Goals Tracker</h2>
+                            <p class="text-xs text-stone-400 dark:text-stone-500">Custom wish & dream items</p>
+                        </div>
                     </div>
-                    
-                    <div id="goals-list" class="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                        <!-- Dynamic Goals Render Here -->
+
+                    <!-- Goal Settings Inputs -->
+                    <div class="space-y-3 bg-sand-50 dark:bg-darkbg-700/60 p-4 rounded-xl border border-sand-200/70 dark:border-darkbg-600 mb-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Goal Item Name</label>
+                            <input type="text" id="goal-title" onchange="updateGoalInfo()" class="w-full px-3 py-1.5 text-xs font-semibold bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-600 rounded-lg focus:outline-none text-sand-900 dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Target Price (Rp)</label>
+                            <input type="number" id="goal-target" onchange="updateGoalInfo()" class="w-full px-3 py-1.5 text-xs font-semibold bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-600 rounded-lg focus:outline-none text-sand-900 dark:text-white">
+                        </div>
                     </div>
+
+                    <!-- Goal Progress Display Box -->
+                    <div class="p-4 bg-sand-900 text-white dark:bg-darkbg-700 rounded-xl mb-4">
+                        <div class="flex justify-between items-end mb-2">
+                            <div>
+                                <span class="text-[10px] text-stone-400 uppercase tracking-wider block">Saved For Goal</span>
+                                <span class="text-xl font-bold tracking-tight text-white" id="goal-saved-display">Rp 0</span>
+                            </div>
+                            <span class="text-xs font-bold text-sage-400 bg-sage-800/60 px-2 py-0.5 rounded-full border border-sage-700" id="goal-progress-percentage">0%</span>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="w-full h-2 bg-stone-800 rounded-full overflow-hidden my-2.5">
+                            <div id="goal-progress-bar-fill" class="h-full bg-sage-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+
+                        <div class="flex justify-between text-[11px] text-stone-400 pt-1">
+                            <span>Remaining needed:</span>
+                            <span class="text-stone-200 font-semibold" id="goal-remaining-display">Rp 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Quick Deposit To Goal -->
+                    <form onsubmit="handleQuickGoalSave(event)" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="quick-goal-amount" min="1" placeholder="Amount (Rp)" required class="w-full px-3 py-2 text-xs bg-sand-50 dark:bg-darkbg-900 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/30 text-sand-900 dark:text-white">
+                            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 rounded-xl transition-all shrink-0 flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
+                            </button>
+                        </div>
+                    </form>
                 </div>
 
-            </div>
-
+            </aside>
         </div>
     </div>
 
-    <!-- Hidden file input for JSON Import -->
-    <input type="file" id="import-file" class="hidden" accept=".json" onchange="handleImportFile(event)">
+    <!-- Hidden Printable Area for PDF Generation -->
+    <div id="pdf-report-content" class="hidden p-8 bg-white text-sand-900 font-sans">
+        <div class="border-b border-stone-200 pb-4 mb-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold">Personal Financial Report</h1>
+                <p class="text-xs text-stone-500">Generated on: <span id="pdf-report-date"></span></p>
+            </div>
+            <div class="text-right">
+                <span class="text-xs font-bold text-sage-700 uppercase tracking-widest">Money Management App</span>
+            </div>
+        </div>
 
-    <!-- JavaScript Logic -->
+        <div class="grid grid-cols-3 gap-4 mb-6 text-xs">
+            <div class="p-3 bg-stone-50 rounded-lg">
+                <span class="text-stone-400 block uppercase font-bold text-[9px]">Total Income</span>
+                <span id="pdf-total-income" class="text-sm font-bold">Rp 0</span>
+            </div>
+            <div class="p-3 bg-stone-50 rounded-lg">
+                <span class="text-stone-400 block uppercase font-bold text-[9px]">Total Expenses</span>
+                <span id="pdf-total-expenses" class="text-sm font-bold">Rp 0</span>
+            </div>
+            <div class="p-3 bg-stone-50 rounded-lg">
+                <span class="text-stone-400 block uppercase font-bold text-[9px]">Cash Remaining</span>
+                <span id="pdf-net-remaining" class="text-sm font-bold">Rp 0</span>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-stone-400 mb-2">Spending Breakdown</h3>
+            <div class="grid grid-cols-3 gap-4 text-xs">
+                <div class="p-2 border border-stone-200 rounded">Needs: <b id="pdf-needs">Rp 0</b></div>
+                <div class="p-2 border border-stone-200 rounded">Wants: <b id="pdf-wants">Rp 0</b></div>
+                <div class="p-2 border border-stone-200 rounded">Savings/Goals: <b id="pdf-savings">Rp 0</b></div>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-stone-400 mb-2">Transaction History Log</h3>
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="border-b border-stone-300 text-[10px] font-bold uppercase text-stone-500">
+                        <th class="py-2">Date</th>
+                        <th class="py-2">Item</th>
+                        <th class="py-2">Type</th>
+                        <th class="py-2 text-right">Income</th>
+                        <th class="py-2 text-right">Expense/Save</th>
+                    </tr>
+                </thead>
+                <tbody id="pdf-table-rows" class="divide-y divide-stone-200">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Application JavaScript Logic -->
     <script>
-        let state = {
-            currency: 'Rp',
-            baselineIncome: 0,
-            transactions: [],
-            generalSavings: 0,
-            goals: [
-                { id: '1', title: 'Emergency Fund', target: 5000000, current: 1000000 }
-            ]
-        };
+        const DEFAULT_BASE_INCOME = 505955;
+        const DEFAULT_GOAL = { title: "Custom Goal", target: 1000000 };
+        const DEFAULT_TRANSACTIONS = [
+            { id: '1', date: '2026-10-25', desc: 'Water 10k', type: 'Need', amount: 10000, deduct: true, isGoal: false },
+            { id: '2', date: '2026-10-25', desc: 'Boba Milk Tea', type: 'Want', amount: 25000, deduct: true, isGoal: false },
+            { id: '3', date: '2026-10-25', desc: 'General Savings Deposit', type: 'Save', amount: 117000, deduct: true, isGoal: false }
+        ];
 
-        let chart = null;
+        // Global State
+        let baseIncome = JSON.parse(localStorage.getItem('pm_base_income')) ?? DEFAULT_BASE_INCOME;
+        let goalState = JSON.parse(localStorage.getItem('pm_goal_state')) || DEFAULT_GOAL;
+        let transactions = JSON.parse(localStorage.getItem('pm_transactions')) || DEFAULT_TRANSACTIONS;
+        let activeFilter = 'All';
+        let chartInstance = null;
+        let isDarkMode = localStorage.getItem('pm_theme') === 'dark';
 
         window.onload = function() {
-            loadSavedData();
-            initChart();
-            updateUI();
+            lucide.createIcons();
             
-            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            // Apply Theme
+            if (isDarkMode) document.documentElement.classList.add('dark');
+            updateThemeUI();
+
+            // Set today's date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('tx-date').value = today;
+
+            // Load inputs
+            document.getElementById('base-income-input').value = baseIncome;
+            document.getElementById('goal-title').value = goalState.title;
+            document.getElementById('goal-target').value = goalState.target;
+
+            initChart();
+            render();
+        };
+
+        function formatRp(val) {
+            return 'Rp ' + Math.max(0, val).toLocaleString('id-ID');
+        }
+
+        // Show Toast Notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-sage-700 text-white dark:bg-sage-600' : 'bg-stone-800 text-white';
+            
+            toast.className = `px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto ${bgColor}`;
+            toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'info'}" class="w-4 h-4"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Explicit Save Button Trigger
+        function manualSaveData() {
+            saveState();
+            showToast('All data saved to Local Storage!');
+        }
+
+        function saveState() {
+            localStorage.setItem('pm_base_income', JSON.stringify(baseIncome));
+            localStorage.setItem('pm_goal_state', JSON.stringify(goalState));
+            localStorage.setItem('pm_transactions', JSON.stringify(transactions));
+            localStorage.setItem('pm_theme', isDarkMode ? 'dark' : 'light');
+            render();
+        }
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            if (isDarkMode) {
                 document.documentElement.classList.add('dark');
             } else {
                 document.documentElement.classList.remove('dark');
             }
-        };
-
-        document.getElementById('theme-toggle').addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-            const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-            localStorage.setItem('theme', theme);
-        });
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-message').innerText = msg;
-            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
-            }, 2500);
+            updateThemeUI();
+            saveState();
         }
 
-        function changeCurrency(symbol) {
-            state.currency = symbol;
-            saveData(false);
-            updateUI();
-        }
-
-        function formatNum(num) {
-            return Number(num).toLocaleString('id-ID');
-        }
-
-        function updateUI() {
-            document.querySelectorAll('.curr').forEach(el => el.innerText = state.currency + ' ');
-            document.getElementById('currency-select').value = state.currency;
-
-            let needs = 0, wants = 0, addedIncome = 0, walletSavingsDeductions = 0;
-            
-            state.transactions.forEach(t => {
-                if (t.category === 'Needs') needs += t.amount;
-                if (t.category === 'Wants') wants += t.amount;
-                if (t.category === 'Income') addedIncome += t.amount;
-                if (t.category === 'Savings' && t.deductWallet) walletSavingsDeductions += t.amount;
-            });
-
-            const totalIncome = state.baselineIncome + addedIncome;
-            const remainingBalance = totalIncome - (needs + wants + walletSavingsDeductions);
-
-            document.getElementById('card-income').innerText = state.currency + ' ' + formatNum(totalIncome);
-            document.getElementById('card-needs').innerText = state.currency + ' ' + formatNum(needs);
-            document.getElementById('card-wants').innerText = state.currency + ' ' + formatNum(wants);
-            document.getElementById('card-balance').innerText = state.currency + ' ' + formatNum(remainingBalance);
-            document.getElementById('general-savings-val').innerText = state.currency + ' ' + formatNum(state.generalSavings);
-
-            const destinationSelect = document.getElementById('savings-destination');
-            destinationSelect.innerHTML = `<option value="general">General Savings Vault</option>`;
-            state.goals.forEach(g => {
-                destinationSelect.innerHTML += `<option value="${g.id}">Goal: ${g.title}</option>`;
-            });
-
-            renderLogs();
-            renderGoals();
-            updateChart(needs, wants);
+        function updateThemeUI() {
+            const icon = document.getElementById('theme-icon');
+            const text = document.getElementById('theme-text');
+            if (isDarkMode) {
+                icon.setAttribute('data-lucide', 'sun');
+                text.innerText = 'Light Mode';
+            } else {
+                icon.setAttribute('data-lucide', 'moon');
+                text.innerText = 'Dark Mode';
+            }
+            lucide.createIcons();
         }
 
         function toggleDeductOption() {
-            const cat = document.getElementById('category').value;
-            const deductBox = document.getElementById('deduct-toggle-container');
-            const targetContainer = document.getElementById('target-savings-container');
-            
-            if (cat === 'Savings') {
-                deductBox.classList.remove('hidden');
-                targetContainer.classList.remove('hidden');
+            const type = document.getElementById('tx-type').value;
+            const container = document.getElementById('deduct-toggle-container');
+            if (type === 'Save') {
+                container.classList.remove('hidden');
             } else {
-                deductBox.classList.add('hidden');
-                targetContainer.classList.add('hidden');
+                container.classList.add('hidden');
             }
-        }
-
-        function addTransaction(e) {
-            e.preventDefault();
-            const desc = document.getElementById('desc').value;
-            const amount = parseFloat(document.getElementById('amount').value);
-            const category = document.getElementById('category').value;
-            const deductWallet = document.getElementById('deduct-wallet').checked;
-            const dest = document.getElementById('savings-destination').value;
-
-            if (category === 'Savings') {
-                if (dest === 'general') {
-                    state.generalSavings += amount;
-                } else {
-                    const goal = state.goals.find(g => g.id === dest);
-                    if (goal) goal.current += amount;
-                }
-            }
-
-            state.transactions.unshift({
-                id: Date.now().toString(),
-                date: new Date().toLocaleDateString(),
-                desc,
-                amount,
-                category,
-                deductWallet: category === 'Savings' ? deductWallet : true
-            });
-
-            saveData(true);
-            updateUI();
-            document.getElementById('transaction-form').reset();
-            toggleDeductOption();
-        }
-
-        function renderLogs() {
-            const list = document.getElementById('transaction-list');
-            list.innerHTML = '';
-            
-            if (state.transactions.length === 0) {
-                list.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-400">No logs recorded yet.</td></tr>`;
-                return;
-            }
-
-            state.transactions.forEach((t) => {
-                let badgeClass = 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
-                if (t.category === 'Needs') badgeClass = 'bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400';
-                if (t.category === 'Wants') badgeClass = 'bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400';
-                if (t.category === 'Income') badgeClass = 'bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400';
-                if (t.category === 'Savings') badgeClass = 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400';
-
-                list.innerHTML += `
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                        <td class="py-2.5 px-2 text-slate-400">${t.date}</td>
-                        <td class="py-2.5 px-2 font-medium">${t.desc}</td>
-                        <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}">${t.category}</span></td>
-                        <td class="py-2.5 px-2 text-right font-bold">${state.currency} ${formatNum(t.amount)}</td>
-                        <td class="py-2.5 px-2 text-center">
-                            <button onclick="deleteLog('${t.id}')" class="text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function renderGoals() {
-            const container = document.getElementById('goals-list');
-            container.innerHTML = '';
-
-            if (state.goals.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">No target goals set.</p>`;
-                return;
-            }
-
-            state.goals.forEach(g => {
-                const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
-                container.innerHTML += `
-                    <div class="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                        <div class="flex justify-between items-center mb-1 text-xs">
-                            <span class="font-bold">${g.title}</span>
-                            <div class="space-x-1">
-                                <span class="text-slate-500">${state.currency} ${formatNum(g.current)} / ${formatNum(g.target)}</span>
-                                <button onclick="deleteGoal('${g.id}')" class="text-slate-400 hover:text-rose-500 text-[10px] ml-1"><i class="fa-solid fa-xmark"></i></button>
-                            </div>
-                        </div>
-                        <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2 overflow-hidden">
-                            <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: ${pct}%"></div>
-                        </div>
-                        <div class="text-[10px] text-right text-slate-400 mt-1">${pct}% Achieved</div>
-                    </div>
-                `;
-            });
         }
 
         function initChart() {
-            const ctx = document.getElementById('financeChart').getContext('2d');
-            chart = new Chart(ctx, {
+            const ctx = document.getElementById('spendingChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Needs', 'Wants', 'Total Savings Vaults'],
+                    labels: ['Needs', 'Wants', 'Savings/Goals'],
                     datasets: [{
                         data: [0, 0, 0],
-                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
-                        borderWidth: 0
+                        backgroundColor: ['#5C725E', '#E07A5F', '#3D405B'],
+                        borderWidth: 0,
+                        hoverOffset: 6
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return ' ' + context.label + ': ' + state.currency + ' ' + formatNum(context.raw);
-                                }
-                            }
-                        }
-                    },
-                    cutout: '70%'
+                    cutout: '72%',
+                    plugins: { legend: { display: false } }
                 }
             });
         }
 
-        function updateChart(needs, wants) {
-            let totalSavedVaults = state.generalSavings + state.goals.reduce((acc, g) => acc + g.current, 0);
-            if (chart) {
-                chart.data.datasets[0].data = [needs, wants, totalSavedVaults];
-                chart.update();
+        function render() {
+            renderOverviewStats();
+            renderBreakdown();
+            renderRightPanels();
+            renderTransactionsTable();
+            lucide.createIcons();
+        }
+
+        function renderOverviewStats() {
+            let loggedIncome = 0;
+            let totalExpenses = 0;
+            let totalDeductedSavings = 0;
+
+            transactions.forEach(tx => {
+                const amt = Number(tx.amount);
+                if (tx.type === 'Income') loggedIncome += amt;
+                else if (tx.type === 'Need' || tx.type === 'Want') totalExpenses += amt;
+                else if (tx.type === 'Save' && tx.deduct !== false) totalDeductedSavings += amt;
+            });
+
+            const grandTotalIncome = baseIncome + loggedIncome;
+            const netRemaining = grandTotalIncome - totalExpenses - totalDeductedSavings;
+
+            document.getElementById('stat-total-income').innerText = formatRp(grandTotalIncome);
+            document.getElementById('stat-total-expenses').innerText = formatRp(totalExpenses);
+            document.getElementById('stat-net-remaining').innerText = formatRp(netRemaining);
+        }
+
+        function renderBreakdown() {
+            let needsTotal = 0;
+            let wantsTotal = 0;
+            let saveTotal = 0;
+
+            transactions.forEach(tx => {
+                const amt = Number(tx.amount);
+                if (tx.type === 'Need') needsTotal += amt;
+                if (tx.type === 'Want') wantsTotal += amt;
+                if (tx.type === 'Save') saveTotal += amt;
+            });
+
+            const grandTotalOut = needsTotal + wantsTotal + saveTotal;
+            const needsPct = grandTotalOut > 0 ? Math.round((needsTotal / grandTotalOut) * 100) : 0;
+            const wantsPct = grandTotalOut > 0 ? Math.round((wantsTotal / grandTotalOut) * 100) : 0;
+            const savePct = grandTotalOut > 0 ? Math.round((saveTotal / grandTotalOut) * 100) : 0;
+
+            document.getElementById('table-needs-amount').innerText = formatRp(needsTotal);
+            document.getElementById('table-needs-pct').innerText = needsPct + '%';
+
+            document.getElementById('table-wants-amount').innerText = formatRp(wantsTotal);
+            document.getElementById('table-wants-pct').innerText = wantsPct + '%';
+
+            document.getElementById('table-save-amount').innerText = formatRp(saveTotal);
+            document.getElementById('table-save-pct').innerText = savePct + '%';
+
+            if (chartInstance) {
+                chartInstance.data.datasets[0].data = [needsTotal, wantsTotal, saveTotal];
+                chartInstance.update();
             }
         }
 
-        function editIncome() {
-            const val = prompt('Enter your baseline income amount:', state.baselineIncome);
-            if (val !== null && !isNaN(val)) {
-                state.baselineIncome = parseFloat(val);
-                saveData(true);
-                updateUI();
-            }
+        function renderRightPanels() {
+            let vaultTotal = 0;
+            let goalTotal = 0;
+
+            transactions.forEach(tx => {
+                if (tx.type === 'Save') {
+                    if (tx.isGoal) goalTotal += Number(tx.amount);
+                    else vaultTotal += Number(tx.amount);
+                }
+            });
+
+            // Vault
+            document.getElementById('vault-total-display').innerText = formatRp(vaultTotal);
+
+            // Goal
+            const target = goalState.target || 1;
+            const remaining = Math.max(0, target - goalTotal);
+            const percentage = Math.min(100, Math.round((goalTotal / target) * 100));
+
+            document.getElementById('goal-saved-display').innerText = formatRp(goalTotal);
+            document.getElementById('goal-remaining-display').innerText = formatRp(remaining);
+            document.getElementById('goal-progress-percentage').innerText = percentage + '%';
+            document.getElementById('goal-progress-bar-fill').style.width = percentage + '%';
         }
 
-        function promptAddGoal() {
-            const title = prompt('Enter Goal Target Title (e.g. New Laptop):');
-            if (!title) return;
-            const target = prompt('Enter Target Amount:');
-            if (!target || isNaN(target)) return;
+        function renderTransactionsTable() {
+            const tbody = document.getElementById('transaction-rows');
+            const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
 
-            state.goals.push({
+            tbody.innerHTML = '';
+
+            let filtered = transactions.filter(tx => {
+                const matchesFilter = (activeFilter === 'All') || (tx.type === activeFilter);
+                const matchesSearch = tx.desc.toLowerCase().includes(searchVal) || tx.type.toLowerCase().includes(searchVal);
+                return matchesFilter && matchesSearch;
+            });
+
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-stone-400 dark:text-stone-500">No entries found.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(tx => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-sand-50/60 dark:hover:bg-darkbg-700/50 transition-colors';
+
+                const isIncome = tx.type === 'Income';
+                const badgeColor = 
+                    tx.type === 'Need' ? 'bg-sage-100 text-sage-800 dark:bg-sage-950/80 dark:text-sage-300 border-sage-200 dark:border-sage-800' :
+                    tx.type === 'Want' ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/80 dark:text-orange-300 border-orange-200 dark:border-orange-800' :
+                    tx.type === 'Save' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' :
+                    'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+
+                const deductLabel = tx.type === 'Save' ? (tx.deduct !== false ? ' (Deducted)' : ' (No Deduct)') : '';
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 font-mono text-stone-500 dark:text-stone-400 text-[11px]">${tx.date}</td>
+                    <td class="py-3.5 px-4 font-semibold text-sand-900 dark:text-white">${escapeHtml(tx.desc)}</td>
+                    <td class="py-3.5 px-4">
+                        <span class="inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-md border ${badgeColor}">
+                            ${tx.type}${deductLabel}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4 text-right font-semibold ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-300 dark:text-stone-600'}">
+                        ${isIncome ? formatRp(tx.amount) : '-'}
+                    </td>
+                    <td class="py-3.5 px-4 text-right font-semibold ${!isIncome ? 'text-sand-900 dark:text-stone-200' : 'text-stone-300 dark:text-stone-600'}">
+                        ${!isIncome ? formatRp(tx.amount) : '-'}
+                    </td>
+                    <td class="py-3.5 px-4 text-center">
+                        <button onclick="deleteTransaction('${tx.id}')" class="p-1.5 text-stone-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors" title="Delete">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function handleAddTransaction(e) {
+            e.preventDefault();
+            const date = document.getElementById('tx-date').value;
+            const type = document.getElementById('tx-type').value;
+            const desc = document.getElementById('tx-desc').value.trim();
+            const amount = parseFloat(document.getElementById('tx-amount').value);
+            const deduct = document.querySelector('input[name="tx-deduct"]:checked').value === 'yes';
+
+            if (!amount || amount <= 0) return;
+
+            transactions.push({
                 id: Date.now().toString(),
-                title,
-                target: parseFloat(target),
-                current: 0
+                date,
+                desc,
+                type,
+                amount,
+                deduct: type === 'Save' ? deduct : true,
+                isGoal: false
             });
-            saveData(true);
-            updateUI();
+
+            saveState();
+            showToast('Log entry added!');
+
+            document.getElementById('tx-desc').value = '';
+            document.getElementById('tx-amount').value = '';
         }
 
-        function deleteGoal(id) {
-            if (confirm('Delete this goal target?')) {
-                state.goals = state.goals.filter(g => g.id !== id);
-                saveData(true);
-                updateUI();
+        function handleQuickVaultSave(e) {
+            e.preventDefault();
+            const input = document.getElementById('quick-vault-amount');
+            const amount = parseFloat(input.value);
+            if (!amount || amount <= 0) return;
+
+            transactions.push({
+                id: Date.now().toString(),
+                date: new Date().toISOString().split('T')[0],
+                desc: 'Vault Deposit',
+                type: 'Save',
+                amount: amount,
+                deduct: true,
+                isGoal: false
+            });
+
+            input.value = '';
+            saveState();
+            showToast('Added to Savings Vault!');
+        }
+
+        function handleQuickGoalSave(e) {
+            e.preventDefault();
+            const input = document.getElementById('quick-goal-amount');
+            const amount = parseFloat(input.value);
+            if (!amount || amount <= 0) return;
+
+            transactions.push({
+                id: Date.now().toString(),
+                date: new Date().toISOString().split('T')[0],
+                desc: `Goal Deposit: ${goalState.title}`,
+                type: 'Save',
+                amount: amount,
+                deduct: true,
+                isGoal: true
+            });
+
+            input.value = '';
+            saveState();
+            showToast('Added to Goal Tracker!');
+        }
+
+        function updateBaseIncome() {
+            const val = parseFloat(document.getElementById('base-income-input').value);
+            if (!isNaN(val) && val >= 0) {
+                baseIncome = val;
+                saveState();
+                showToast('Baseline Income updated!');
             }
         }
 
-        function deleteLog(id) {
-            state.transactions = state.transactions.filter(t => t.id !== id);
-            saveData(true);
-            updateUI();
+        function updateGoalInfo() {
+            const title = document.getElementById('goal-title').value.trim();
+            const target = parseFloat(document.getElementById('goal-target').value);
+
+            if (title) goalState.title = title;
+            if (!isNaN(target) && target > 0) goalState.target = target;
+
+            saveState();
+            showToast('Target Goal updated!');
         }
 
-        function clearLogs() {
-            if (confirm('Clear all money log entries?')) {
-                state.transactions = [];
-                saveData(true);
-                updateUI();
+        function deleteTransaction(id) {
+            transactions = transactions.filter(t => t.id !== id);
+            saveState();
+            showToast('Entry deleted');
+        }
+
+        function setFilter(category) {
+            activeFilter = category;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.className = 'filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white';
+            });
+            const activeBtn = document.getElementById(`filter-${category}`);
+            if (activeBtn) {
+                activeBtn.className = 'filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-darkbg-800 text-sand-900 dark:text-white shadow-xs';
             }
+            renderTransactionsTable();
         }
 
-        function saveData(showToastNotification = false) {
-            localStorage.setItem('money_manager_data', JSON.stringify(state));
-            if (showToastNotification) showToast("Data saved successfully!");
+        function resetData() {
+            baseIncome = DEFAULT_BASE_INCOME;
+            goalState = { ...DEFAULT_GOAL };
+            transactions = [ ...DEFAULT_TRANSACTIONS ];
+
+            document.getElementById('base-income-input').value = baseIncome;
+            document.getElementById('goal-title').value = goalState.title;
+            document.getElementById('goal-target').value = goalState.target;
+
+            saveState();
+            showToast('All data reset to initial defaults');
         }
 
-        function loadSavedData() {
-            const saved = localStorage.getItem('money_manager_data');
-            if (saved) {
-                try {
-                    state = Object.assign(state, JSON.parse(saved));
-                } catch(e) { console.error("Error loading saved data", e); }
-            }
-        }
+        function exportPDFReport() {
+            // Populate PDF Template Data
+            document.getElementById('pdf-report-date').innerText = new Date().toLocaleDateString('id-ID');
+            document.getElementById('pdf-total-income').innerText = document.getElementById('stat-total-income').innerText;
+            document.getElementById('pdf-total-expenses').innerText = document.getElementById('stat-total-expenses').innerText;
+            document.getElementById('pdf-net-remaining').innerText = document.getElementById('stat-net-remaining').innerText;
 
-        function exportJSON() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
-            const dlAnchorElem = document.createElement('a');
-            dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", `money_manager_backup_${new Date().toISOString().slice(0,10)}.json`);
-            dlAnchorElem.click();
-        }
+            document.getElementById('pdf-needs').innerText = document.getElementById('table-needs-amount').innerText;
+            document.getElementById('pdf-wants').innerText = document.getElementById('table-wants-amount').innerText;
+            document.getElementById('pdf-savings').innerText = document.getElementById('table-save-amount').innerText;
 
-        function importJSON() {
-            document.getElementById('import-file').click();
-        }
+            const pdfBody = document.getElementById('pdf-table-rows');
+            pdfBody.innerHTML = '';
 
-        function handleImportFile(event) {
-            const fileReader = new FileReader();
-            fileReader.onload = (e) => {
-                try {
-                    state = JSON.parse(e.target.result);
-                    saveData(false);
-                    updateUI();
-                    showToast("Backup imported successfully!");
-                } catch(err) {
-                    alert("Invalid JSON file!");
-                }
-            };
-            if(event.target.files[0]) fileReader.readAsText(event.target.files[0]);
-        }
+            transactions.forEach(tx => {
+                const tr = document.createElement('tr');
+                const isIncome = tx.type === 'Income';
+                tr.innerHTML = `
+                    <td class="py-1.5">${tx.date}</td>
+                    <td class="py-1.5 font-semibold">${escapeHtml(tx.desc)}</td>
+                    <td class="py-1.5">${tx.type}</td>
+                    <td class="py-1.5 text-right">${isIncome ? formatRp(tx.amount) : '-'}</td>
+                    <td class="py-1.5 text-right">${!isIncome ? formatRp(tx.amount) : '-'}</td>
+                `;
+                pdfBody.appendChild(tr);
+            });
 
-        function exportPDF() {
-            const element = document.getElementById('report-container');
+            const element = document.getElementById('pdf-report-content');
+            element.classList.remove('hidden');
+
             const opt = {
-                margin:       0.3,
-                filename:     `Financial_Report_${new Date().toISOString().slice(0,10)}.pdf`,
+                margin:       0.5,
+                filename:     `Financial_Report_${new Date().toISOString().split('T')[0]}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2 },
                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
             };
-            html2pdf().set(opt).from(element).save();
+
+            showToast('Generating PDF Report...');
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.classList.add('hidden');
+            });
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     </script>
 </body>
