@@ -1,1469 +1,1061 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Personal Money Management</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- html2pdf.js for PDF Generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- Firebase (cloud sync) -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
-    <!-- QR code generator (for device pairing) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-    <!-- Google Fonts: Plus Jakarta Sans -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-                    },
                     colors: {
                         sand: {
                             50: '#FAF9F6',
                             100: '#F3F1EA',
                             200: '#E6E1D5',
-                            300: '#D5CDBF',
-                            800: '#433E38',
-                            900: '#2C2925'
+                            300: '#D4CEBF',
+                            800: '#2D2B26',
+                            900: '#1C1B17',
                         },
                         sage: {
                             50: '#F4F7F4',
-                            100: '#E3EAE3',
-                            200: '#C7D5C8',
+                            100: '#E3EBE3',
                             500: '#738D75',
                             600: '#5C725E',
                             700: '#475848',
-                            800: '#364337'
                         },
-                        darkbg: {
-                            900: '#121316',
-                            800: '#1A1C20',
-                            700: '#24272D',
-                            600: '#2E323A'
-                        }
+                        darkbg: '#121316',
+                        darkcard: '#1A1C20',
+                        darkborder: '#24272D'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #E6E1D5;
-            border-radius: 9999px;
-        }
-        .dark ::-webkit-scrollbar-thumb {
-            background: #2E323A;
-        }
-        /* Custom Print Styling for PDF Export */
-        @media print {
-            .no-print { display: none !important; }
-        }
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        #pdf-report-content { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="h-full font-sans antialiased bg-[#FAF9F6] text-[#2C2925] dark:bg-darkbg-900 dark:text-stone-200 transition-colors duration-300">
+<body class="bg-sand-50 dark:bg-darkbg text-sand-800 dark:text-gray-100 min-h-screen pb-12">
 
-    <!-- Sync Modal -->
-    <div id="sync-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onclick="if(event.target===this)closeSyncModal()">
-        <div class="w-full max-w-sm bg-white dark:bg-darkbg-800 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xl p-6 text-center">
-            <h2 class="text-base font-bold text-sand-900 dark:text-white mb-3">Sync between your devices</h2>
-
-            <div id="sync-on">
-                <div id="sync-qr" class="mx-auto w-48 h-48 p-2 bg-white rounded-xl border border-sand-200 flex items-center justify-center"></div>
-                <p id="sync-status" class="text-xs font-semibold text-sage-600 dark:text-sage-400 mt-3"></p>
-                <p class="text-xs text-stone-500 dark:text-stone-400 mt-1 mb-3">Scan this QR code with your other device's camera, or open the link there.</p>
-                <div class="flex items-center gap-2">
-                    <input id="sync-link" readonly class="w-full px-3 py-2 text-[11px] bg-sand-50 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl text-stone-600 dark:text-stone-300 focus:outline-none">
-                    <button onclick="copySyncLink()" class="px-3 py-2 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 rounded-xl transition-all shrink-0">Copy link</button>
-                </div>
-                <p class="text-[11px] text-rose-600 dark:text-rose-400 mt-3">Keep this private: anyone with this link can see and edit your log.</p>
-                <button onclick="closeSyncModal(); document.getElementById('backup-file').click()" class="mt-4 block mx-auto text-[11px] font-semibold text-stone-500 hover:text-sage-700 dark:text-stone-400 dark:hover:text-sage-400 transition-colors">Restore from backup file</button>
-                <button onclick="stopSync()" class="mt-2 block mx-auto text-[11px] font-semibold text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">Stop syncing on this device</button>
-            </div>
-
-            <button onclick="closeSyncModal()" class="mt-4 w-full px-4 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-sand-100 dark:bg-darkbg-700 hover:bg-sand-200 dark:hover:bg-darkbg-600 rounded-xl transition-all">Close</button>
-        </div>
-    </div>
-
-    <!-- Join Modal (opened by scanning the QR code) -->
-    <div id="join-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-        <div class="w-full max-w-sm bg-white dark:bg-darkbg-800 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xl p-6">
-            <h2 class="text-base font-bold text-sand-900 dark:text-white text-center mb-1">Connect this device?</h2>
-            <p class="text-xs text-stone-500 dark:text-stone-400 text-center mb-4">Choose how this device should sync with your log.</p>
-
-            <button onclick="joinSync('keep')" class="w-full text-left p-3 rounded-xl border border-sand-200 dark:border-darkbg-600 bg-sand-50/60 dark:bg-darkbg-700/60 hover:border-sage-500 hover:bg-sage-50 dark:hover:bg-darkbg-700 transition-all mb-2">
-                <span class="block text-xs font-bold text-sand-900 dark:text-white">Keep Sync</span>
-                <span class="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Stays connected, even after you close the website.</span>
-            </button>
-            <button onclick="joinSync('live')" class="w-full text-left p-3 rounded-xl border border-sand-200 dark:border-darkbg-600 bg-sand-50/60 dark:bg-darkbg-700/60 hover:border-sage-500 hover:bg-sage-50 dark:hover:bg-darkbg-700 transition-all mb-2">
-                <span class="block text-xs font-bold text-sand-900 dark:text-white">Live Sync</span>
-                <span class="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Only syncs while this website is open. When you close it, this device goes back to how it was before and nothing from your log stays here.</span>
-            </button>
-
-            <button onclick="cancelJoin()" class="mt-1 w-full px-4 py-2 text-xs font-semibold text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white transition-colors">Cancel</button>
-        </div>
-    </div>
-
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
-    <div class="min-h-screen flex flex-col max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
-        
-        <!-- Header -->
-        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-sand-200/60 dark:border-darkbg-700">
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-sage-500"></span>
-                    <h1 class="text-2xl font-bold tracking-tight text-sand-900 dark:text-white">Personal Money Management</h1>
-                </div>
-                <p class="text-xs text-stone-500 dark:text-stone-400 mt-0.5 pl-4">Daily Tracker, Savings Vault & Target Goals</p>
-                <p id="rate-info" class="text-[11px] font-medium text-sage-600 dark:text-sage-400 mt-0.5 pl-4"></p>
-            </div>
+    <!-- HEADER -->
+    <header class="sticky top-0 z-30 bg-white/85 dark:bg-darkcard/85 backdrop-blur-md border-b border-sand-200 dark:border-darkborder px-4 lg:px-8 py-3 transition-colors">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
             
-            <div class="flex flex-wrap items-center gap-2">
-                <!-- Language Selector -->
-                <select id="lang-select" onchange="setLang(this.value)" class="px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 shadow-xs"></select>
-
-                <!-- Currency Selector -->
-                <select id="currency-select" onchange="setCurrency(this.value)" class="px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 shadow-xs"></select>
-
-                <!-- Theme Toggle Button -->
-                <button onclick="toggleTheme()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
-                    <i id="theme-icon" data-lucide="moon" class="w-3.5 h-3.5"></i>
-                    <span id="theme-text">Dark Mode</span>
-                </button>
-
-                <!-- Explicit Save Data Button -->
-                <button onclick="manualSaveData()" class="group inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 dark:bg-sage-500 dark:hover:bg-sage-600 rounded-xl transition-all shadow-xs">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform duration-200 group-hover:scale-110"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                    Save Data
-                </button>
-
-                <!-- Export PDF Report Button -->
-                <button onclick="exportPDFReport()" class="group inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform duration-200 group-hover:translate-y-0.5 text-sage-600 dark:text-sage-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Export My Log (PDF)
-                </button>
-
-<!-- Backup / Restore -->
-                <button onclick="exportBackup()" class="group inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform duration-200 group-hover:translate-y-0.5 text-sage-600 dark:text-sage-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Backup
-                </button>
-                <button onclick="onRestoreClick()" class="group inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 text-sage-600 dark:text-sage-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Restore
-                    <span id="sync-dot" class="hidden inline-block w-2 h-2 rounded-full"></span>
-                </button>
-                <input type="file" id="backup-file" accept=".json,application/json" class="hidden" onchange="importBackup(event)">
-
-                <!-- Reset Data Button -->
-                <button onclick="resetData()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-400 dark:text-stone-500 hover:text-rose-600 dark:hover:text-rose-400 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-rose-50/60 dark:hover:bg-rose-950/30 transition-all shadow-xs">
-                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                    Reset
-                </button>
-            </div>
-        </header>
-
-        <!-- Top Stat Cards (Baseline Income & Balances) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            <!-- Editable Baseline Income Card -->
-            <div class="bg-white dark:bg-darkbg-800 p-5 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs flex flex-col justify-between">
-                <div class="flex items-center justify-between text-stone-500 dark:text-stone-400 mb-2">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Baseline Income</span>
-                    <div class="p-1.5 bg-sage-100 text-sage-700 dark:bg-sage-900/50 dark:text-sage-400 rounded-lg">
-                        <i data-lucide="edit-3" class="w-4 h-4"></i>
-                    </div>
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-sage-600 text-white rounded-xl shadow-sm">
+                    <i data-lucide="wallet" class="w-6 h-6"></i>
                 </div>
                 <div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="cur-symbol text-sm font-semibold text-stone-400">Rp</span>
-                        <input type="number" id="base-income-input" onchange="updateBaseIncome()" class="w-full text-xl font-bold text-sand-900 dark:text-white bg-sand-50/70 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-sage-500/40 transition-all">
-                    </div>
-                    <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1.5">Fixed income baseline</p>
+                    <h1 class="font-bold text-lg leading-tight text-sand-900 dark:text-white" id="t-appName">WealthFlow</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400" id="t-subtitle">Smart Personal Finance</p>
                 </div>
+            </div>
+
+            <!-- Global Action Controls -->
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <!-- Currency Selector (46+ Currencies) -->
+                <div class="flex items-center bg-sand-100 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-2.5 py-1.5 text-xs sm:text-sm">
+                    <i data-lucide="coins" class="w-4 h-4 text-sage-600 dark:text-sage-500 mr-1.5"></i>
+                    <select id="currency-select" class="bg-transparent border-none focus:outline-none font-semibold cursor-pointer dark:text-gray-200">
+                        <option value="IDR">IDR (Rp)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="JPY">JPY (¥)</option>
+                        <option value="CNY">CNY (¥)</option>
+                        <option value="MYR">MYR (RM)</option>
+                        <option value="SGD">SGD (S$)</option>
+                        <option value="BND">BND (B$)</option>
+                        <option value="THB">THB (฿)</option>
+                        <option value="PHP">PHP (₱)</option>
+                        <option value="VND">VND (₫)</option>
+                        <option value="INR">INR (₹)</option>
+                        <option value="KRW">KRW (₩)</option>
+                        <option value="HKD">HKD (HK$)</option>
+                        <option value="TWD">TWD (NT$)</option>
+                        <option value="AUD">AUD (A$)</option>
+                        <option value="NZD">NZD (NZ$)</option>
+                        <option value="CAD">CAD (C$)</option>
+                        <option value="CHF">CHF (Fr)</option>
+                        <option value="SEK">SEK (kr)</option>
+                        <option value="NOK">NOK (kr)</option>
+                        <option value="DKK">DKK (kr)</option>
+                        <option value="AED">AED (AED)</option>
+                        <option value="SAR">SAR (SR)</option>
+                        <option value="QAR">QAR (QR)</option>
+                        <option value="KWD">KWD (KD)</option>
+                        <option value="TRY">TRY (₺)</option>
+                        <option value="RUB">RUB (₽)</option>
+                        <option value="BRL">BRL (R$)</option>
+                        <option value="MXN">MXN ($)</option>
+                        <option value="ARS">ARS ($)</option>
+                        <option value="CLP">CLP ($)</option>
+                        <option value="COP">COP ($)</option>
+                        <option value="ZAR">ZAR (R)</option>
+                        <option value="EGP">EGP (E£)</option>
+                        <option value="NGN">NGN (₦)</option>
+                        <option value="KES">KES (KSh)</option>
+                        <option value="PKR">PKR (Rs)</option>
+                        <option value="BDT">BDT (৳)</option>
+                        <option value="LKR">LKR (Rs)</option>
+                        <option value="ILS">ILS (₪)</option>
+                        <option value="PLN">PLN (zł)</option>
+                        <option value="CZK">CZK (Kč)</option>
+                        <option value="HUF">HUF (Ft)</option>
+                    </select>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="flex items-center bg-sand-100 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-2.5 py-1.5 text-xs sm:text-sm">
+                    <i data-lucide="globe" class="w-4 h-4 text-sage-600 dark:text-sage-500 mr-1.5"></i>
+                    <select id="lang-select" class="bg-transparent border-none focus:outline-none font-semibold cursor-pointer dark:text-gray-200">
+                        <option value="en">English</option>
+                        <option value="id">Bahasa Indonesia</option>
+                        <option value="ms">Bahasa Melayu</option>
+                        <option value="zh">中文 (Chinese)</option>
+                    </select>
+                </div>
+
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="p-2 rounded-xl bg-sand-100 dark:bg-darkbg border border-sand-200 dark:border-darkborder text-gray-600 dark:text-gray-300 hover:bg-sand-200 dark:hover:bg-darkborder transition">
+                    <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+                    <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+                </button>
+
+                <!-- Sync / Pair Button -->
+                <button id="btn-open-sync" class="flex items-center gap-2 bg-sage-50 dark:bg-sage-950/40 text-sage-700 dark:text-sage-400 border border-sage-500/30 hover:bg-sage-100 dark:hover:bg-sage-900/40 font-semibold px-3 py-1.5 rounded-xl text-xs sm:text-sm transition shadow-sm">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sage-500 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-sage-600"></span>
+                    </span>
+                    <i data-lucide="qr-code" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline" id="t-syncBtn">Restore / Sync</span>
+                </button>
+
+                <!-- PDF & Backup Tools -->
+                <div class="flex items-center gap-1.5">
+                    <button id="btn-export-pdf" title="Export PDF Statement" class="p-2 rounded-xl bg-sand-100 dark:bg-darkbg border border-sand-200 dark:border-darkborder text-gray-600 dark:text-gray-300 hover:bg-sand-200 dark:hover:bg-darkborder transition">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btn-backup-json" title="Backup Data (JSON)" class="p-2 rounded-xl bg-sand-100 dark:bg-darkbg border border-sand-200 dark:border-darkborder text-gray-600 dark:text-gray-300 hover:bg-sand-200 dark:hover:bg-darkborder transition">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                    </button>
+                    <label id="btn-restore-json" title="Restore Data (JSON)" class="p-2 rounded-xl bg-sand-100 dark:bg-darkbg border border-sand-200 dark:border-darkborder text-gray-600 dark:text-gray-300 hover:bg-sand-200 dark:hover:bg-darkborder transition cursor-pointer">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        <input type="file" id="json-file-input" class="hidden" accept=".json">
+                    </label>
+                    <button id="btn-reset-data" title="Reset All Data" class="p-2 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-100 transition">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 lg:px-8 pt-6 space-y-6">
+
+        <!-- OVERVIEW TOP STATS CARDS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Baseline Income Card -->
+            <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-4 shadow-sm relative group">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider" id="t-cardBaseIncome">Baseline Income</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <h3 class="text-xl font-bold" id="disp-base-income">0</h3>
+                            <button id="btn-edit-base-income" class="text-gray-400 hover:text-sage-600 transition">
+                                <i data-lucide="edit-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-2.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl">
+                        <i data-lucide="arrow-down-left" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-3" id="t-cardBaseSub">Fixed monthly earnings setup</p>
             </div>
 
             <!-- Total Income Card -->
-            <div class="bg-white dark:bg-darkbg-800 p-5 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs flex flex-col justify-between">
-                <div class="flex items-center justify-between text-stone-500 dark:text-stone-400 mb-2">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Total Income</span>
-                    <div class="p-1.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 rounded-lg">
-                        <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
+            <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-4 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider" id="t-cardTotalIncome">Total Income</p>
+                        <h3 class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1" id="disp-total-income">0</h3>
+                    </div>
+                    <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                        <i data-lucide="trending-up" class="w-5 h-5"></i>
                     </div>
                 </div>
-                <div>
-                    <div class="text-2xl font-bold tracking-tight text-sand-900 dark:text-white" id="stat-total-income">Rp 0</div>
-                    <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Base + Additional Incomes</p>
-                </div>
+                <p class="text-xs text-gray-400 mt-3" id="t-cardTotalIncomeSub">Base + Added side earnings</p>
             </div>
 
             <!-- Total Expenses Card -->
-            <div class="bg-white dark:bg-darkbg-800 p-5 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs flex flex-col justify-between">
-                <div class="flex items-center justify-between text-stone-500 dark:text-stone-400 mb-2">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Total Expenses</span>
-                    <div class="p-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 rounded-lg">
-                        <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+            <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-4 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider" id="t-cardTotalExpenses">Total Expenses</p>
+                        <h3 class="text-xl font-bold text-rose-600 dark:text-rose-400 mt-1" id="disp-total-expenses">0</h3>
+                    </div>
+                    <div class="p-2.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-xl">
+                        <i data-lucide="trending-down" class="w-5 h-5"></i>
                     </div>
                 </div>
-                <div>
-                    <div class="text-2xl font-bold tracking-tight text-sand-900 dark:text-white" id="stat-total-expenses">Rp 0</div>
-                    <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Needs + Wants Spent</p>
-                </div>
+                <p class="text-xs text-gray-400 mt-3" id="t-cardExpensesSub">Needs & Wants spent</p>
             </div>
 
-            <!-- Net Available Cash Card -->
-            <div class="bg-white dark:bg-darkbg-800 p-5 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs flex flex-col justify-between">
-                <div class="flex items-center justify-between text-stone-500 dark:text-stone-400 mb-2">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">Cash in Wallet</span>
-                    <div class="p-1.5 bg-sage-50 text-sage-600 dark:bg-sage-950/50 dark:text-sage-400 rounded-lg">
-                        <i data-lucide="wallet" class="w-4 h-4"></i>
+            <!-- Net Cash / Wallet Card -->
+            <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-4 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider" id="t-cardNetWallet">Cash in Wallet</p>
+                        <h3 class="text-xl font-bold text-sage-600 dark:text-sage-400 mt-1" id="disp-cash-wallet">0</h3>
+                    </div>
+                    <div class="p-2.5 bg-sage-50 dark:bg-sage-950/40 text-sage-600 dark:text-sage-400 rounded-xl">
+                        <i data-lucide="credit-card" class="w-5 h-5"></i>
                     </div>
                 </div>
-                <div>
-                    <div class="text-2xl font-bold tracking-tight text-sand-900 dark:text-white" id="stat-net-remaining">Rp 0</div>
-                    <p class="text-[11px] text-stone-400 dark:text-stone-500 mt-1">Net Balance after Deductions</p>
-                </div>
+                <p class="text-xs text-gray-400 mt-3" id="t-cardWalletSub">Net available liquid funds</p>
             </div>
 
         </div>
 
-        <!-- Main Workspace Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-1">
-            
-            <!-- LEFT & CENTER PANEL (8 Columns) -->
-            <main class="lg:col-span-8 flex flex-col gap-6">
-                
-                <!-- Needs vs Wants vs Save Doughnut Breakdown -->
-                <div class="bg-white dark:bg-darkbg-800 p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs">
-                    <h2 class="text-base font-bold text-sand-900 dark:text-white mb-4 flex items-center gap-2">
-                        <i data-lucide="pie-chart" class="w-4 h-4 text-sage-600 dark:text-sage-400"></i>
-                        Spending & Allocation Breakdown
-                    </h2>
+        <!-- MAIN DASHBOARD CONTENT GRID -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                        <div class="md:col-span-5 flex justify-center items-center relative h-48">
-                            <canvas id="spendingChart"></canvas>
+            <!-- LEFT & CENTER CONTENT (2 Cols) -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- CHART & BREAKDOWN ROW -->
+                <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-5 shadow-sm">
+                    <h2 class="text-base font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-5 h-5 text-sage-600"></i>
+                        <span id="t-sectionAllocation">Financial Allocation Breakdown</span>
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div class="relative w-full aspect-square max-w-[210px] mx-auto">
+                            <canvas id="allocationChart"></canvas>
                         </div>
 
-                        <div class="md:col-span-7 overflow-x-auto">
-                            <table class="w-full text-left text-xs">
-                                <thead>
-                                    <tr class="border-b border-sand-100 dark:border-darkbg-700 text-stone-400 dark:text-stone-500 uppercase text-[10px] font-bold tracking-wider">
-                                        <th class="pb-2">Category</th>
-                                        <th class="pb-2 text-right">Amount</th>
-                                        <th class="pb-2 text-right">% Allocation</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-sand-100 dark:divide-darkbg-700 text-stone-700 dark:text-stone-300">
-                                    <tr>
-                                        <td class="py-2.5 font-medium flex items-center gap-2">
-                                            <span class="w-2.5 h-2.5 rounded-full bg-[#5C725E]"></span>
-                                            Needs
-                                        </td>
-                                        <td class="py-2.5 text-right font-semibold" id="table-needs-amount">Rp 0</td>
-                                        <td class="py-2.5 text-right text-stone-400 dark:text-stone-500" id="table-needs-pct">0%</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-2.5 font-medium flex items-center gap-2">
-                                            <span class="w-2.5 h-2.5 rounded-full bg-[#E07A5F]"></span>
-                                            Wants
-                                        </td>
-                                        <td class="py-2.5 text-right font-semibold" id="table-wants-amount">Rp 0</td>
-                                        <td class="py-2.5 text-right text-stone-400 dark:text-stone-500" id="table-wants-pct">0%</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-2.5 font-medium flex items-center gap-2">
-                                            <span class="w-2.5 h-2.5 rounded-full bg-[#3D405B]"></span>
-                                            Savings & Goals
-                                        </td>
-                                        <td class="py-2.5 text-right font-semibold" id="table-save-amount">Rp 0</td>
-                                        <td class="py-2.5 text-right text-stone-400 dark:text-stone-500" id="table-save-pct">0%</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="space-y-3">
+                            <!-- Needs -->
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-sand-50 dark:bg-darkbg/60 border border-sand-200/60 dark:border-darkborder">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                                    <span class="text-sm font-medium" id="t-lblNeeds">Needs</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm font-bold block" id="disp-breakdown-needs">0</span>
+                                    <span class="text-xs text-gray-400" id="disp-pct-needs">0%</span>
+                                </div>
+                            </div>
+
+                            <!-- Wants -->
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-sand-50 dark:bg-darkbg/60 border border-sand-200/60 dark:border-darkborder">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                                    <span class="text-sm font-medium" id="t-lblWants">Wants</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm font-bold block" id="disp-breakdown-wants">0</span>
+                                    <span class="text-xs text-gray-400" id="disp-pct-wants">0%</span>
+                                </div>
+                            </div>
+
+                            <!-- Savings -->
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-sand-50 dark:bg-darkbg/60 border border-sand-200/60 dark:border-darkborder">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-3 h-3 rounded-full bg-sage-500"></span>
+                                    <span class="text-sm font-medium" id="t-lblSavings">Savings & Goals</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm font-bold block" id="disp-breakdown-savings">0</span>
+                                    <span class="text-xs text-gray-400" id="disp-pct-savings">0%</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Add Transaction Form -->
-                <div class="bg-white dark:bg-darkbg-800 p-5 sm:p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs">
-                    <h2 class="text-base font-bold text-sand-900 dark:text-white mb-4 flex items-center gap-2">
-                        <i data-lucide="plus-circle" class="w-4 h-4 text-sage-600 dark:text-sage-400"></i>
-                        Log Daily Entry
+                <!-- DAILY TRANSACTION LOGGER -->
+                <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-5 shadow-sm space-y-4">
+                    <h2 class="text-base font-semibold flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-sage-600"></i>
+                        <span id="t-titleAddTxn">Log Transaction</span>
                     </h2>
-                    
-                    <form id="transaction-form" onsubmit="handleAddTransaction(event)" class="space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                            <!-- Date -->
-                            <div>
-                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Date</label>
-                                <input type="date" id="tx-date" required class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all">
-                            </div>
 
-                            <!-- Type -->
-                            <div>
-                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Type</label>
-                                <select id="tx-type" onchange="toggleDeductOption()" class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all font-medium">
-                                    <option value="Need">Need (Expense)</option>
-                                    <option value="Want">Want (Expense)</option>
-                                    <option value="Save">Save (Savings / Goal)</option>
-                                    <option value="Income">Income (+)</option>
-                                </select>
-                            </div>
-
-                            <!-- Description -->
-                            <div>
-                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Item Description</label>
-                                <input type="text" id="tx-desc" placeholder="e.g. Water 10k, Boba..." required class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all">
-                            </div>
-
-                            <!-- Amount -->
-                            <div>
-                                <label class="block text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Amount (<span class="cur-code">IDR</span>)</label>
-                                <input type="number" id="tx-amount" min="0.01" step="any" placeholder="10000" required class="w-full px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200 transition-all">
-                            </div>
+                    <form id="form-transaction" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block" id="t-lblDate">Date</label>
+                            <input type="date" id="txn-date" required class="w-full bg-sand-50 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block" id="t-lblType">Type</label>
+                            <select id="txn-type" class="w-full bg-sand-50 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
+                                <option value="Need">Need (Expense)</option>
+                                <option value="Want">Want (Expense)</option>
+                                <option value="Save">Save (Vault)</option>
+                                <option value="Income">Income (Additional)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block" id="t-lblDesc">Description</label>
+                            <input type="text" id="txn-desc" placeholder="e.g. Groceries" required class="w-full bg-sand-50 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block" id="t-lblAmount">Amount (Base IDR)</label>
+                            <input type="number" step="any" id="txn-amount" placeholder="0" required class="w-full bg-sand-50 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
                         </div>
 
-                        <!-- Savings Deduction Option (Appears when Type is Save) -->
-                        <div id="deduct-toggle-container" class="hidden p-3 bg-sand-50 dark:bg-darkbg-700/60 rounded-xl border border-sand-200 dark:border-darkbg-600 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div class="flex items-center gap-2 text-xs text-stone-700 dark:text-stone-300">
-                                <i data-lucide="help-circle" class="w-4 h-4 text-sage-600 dark:text-sage-400"></i>
-                                <span>Deduct from Cash Balance (Wallet)?</span>
-                            </div>
-                            <div class="flex items-center gap-4">
-                                <label class="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-                                    <input type="radio" name="tx-deduct" value="yes" checked class="text-sage-600 focus:ring-sage-500">
-                                    <span>Yes (Deduct)</span>
-                                </label>
-                                <label class="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-                                    <input type="radio" name="tx-deduct" value="no" class="text-sage-600 focus:ring-sage-500">
-                                    <span>No (Keep Balance)</span>
-                                </label>
-                            </div>
+                        <!-- Radio toggle for "Save" -->
+                        <div id="savings-radio-box" class="hidden sm:col-span-2 md:col-span-3 flex items-center gap-4 pt-1">
+                            <span class="text-xs font-medium text-gray-600 dark:text-gray-400" id="t-lblDeduct">Deduct from Cash Balance?</span>
+                            <label class="inline-flex items-center gap-1 text-xs cursor-pointer">
+                                <input type="radio" name="deduct_wallet" value="yes" checked class="text-sage-600 focus:ring-sage-500">
+                                <span id="t-optYes">Yes</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1 text-xs cursor-pointer">
+                                <input type="radio" name="deduct_wallet" value="no" class="text-sage-600 focus:ring-sage-500">
+                                <span id="t-optNo">No</span>
+                            </label>
                         </div>
 
-                        <div class="flex justify-end pt-1">
-                            <button type="submit" class="w-full sm:w-auto px-6 py-2.5 text-xs font-semibold text-white bg-sand-900 hover:bg-black dark:bg-sage-600 dark:hover:bg-sage-500 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2">
+                        <div class="sm:col-span-2 md:col-span-1 flex items-end">
+                            <button type="submit" class="w-full bg-sage-600 hover:bg-sage-700 text-white font-medium py-2 px-4 rounded-xl text-sm transition flex items-center justify-center gap-1.5 shadow-sm">
                                 <i data-lucide="plus" class="w-4 h-4"></i>
-                                Add Entry
+                                <span id="t-btnAdd">Add Record</span>
                             </button>
                         </div>
                     </form>
                 </div>
 
-                <!-- Daily Money Log Table -->
-                <div class="bg-white dark:bg-darkbg-800 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs overflow-hidden">
-                    
-                    <div class="p-5 border-b border-sand-100 dark:border-darkbg-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h2 class="text-base font-bold text-sand-900 dark:text-white">Daily Money Log</h2>
-                            <p class="text-xs text-stone-400 dark:text-stone-500 mt-0.5">Filter, search, and manage your logged transactions</p>
-                        </div>
+                <!-- TRANSACTION HISTORY TABLE -->
+                <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-5 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <h2 class="text-base font-semibold flex items-center gap-2">
+                            <i data-lucide="list" class="w-5 h-5 text-sage-600"></i>
+                            <span id="t-titleHistory">Transaction History</span>
+                        </h2>
 
-                        <div class="flex flex-wrap items-center gap-2">
-                            <!-- Filter Pills -->
-                            <div class="flex bg-sand-100/70 dark:bg-darkbg-700 p-1 rounded-xl gap-1 border border-sand-200/50 dark:border-darkbg-600">
-                                <button onclick="setFilter('All')" id="filter-All" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-darkbg-800 text-sand-900 dark:text-white shadow-xs">All</button>
-                                <button onclick="setFilter('Need')" id="filter-Need" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white">Needs</button>
-                                <button onclick="setFilter('Want')" id="filter-Want" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white">Wants</button>
-                                <button onclick="setFilter('Save')" id="filter-Save" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white">Savings</button>
-                                <button onclick="setFilter('Income')" id="filter-Income" class="filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white">Income</button>
-                            </div>
-
-                            <!-- Search -->
-                            <div class="relative w-full sm:w-44">
-                                <i data-lucide="search" class="w-3.5 h-3.5 text-stone-400 absolute left-3 top-2.5"></i>
-                                <input type="text" id="search-input" oninput="render()" placeholder="Search..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-sand-50/70 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200">
-                            </div>
+                        <!-- Search Input -->
+                        <div class="relative w-full sm:w-48">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-gray-400"></i>
+                            <input type="text" id="txn-search" placeholder="Search..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-sand-50 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500">
                         </div>
                     </div>
 
-                    <!-- Table Container -->
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
+                    <!-- Category Filter Pills -->
+                    <div class="flex flex-wrap gap-2 pt-1" id="filter-pills">
+                        <button data-filter="All" class="filter-btn active text-xs font-medium px-3 py-1.5 rounded-lg bg-sage-600 text-white transition">All</button>
+                        <button data-filter="Need" class="filter-btn text-xs font-medium px-3 py-1.5 rounded-lg bg-sand-100 dark:bg-darkbg text-gray-600 dark:text-gray-300 hover:bg-sand-200 transition">Needs</button>
+                        <button data-filter="Want" class="filter-btn text-xs font-medium px-3 py-1.5 rounded-lg bg-sand-100 dark:bg-darkbg text-gray-600 dark:text-gray-300 hover:bg-sand-200 transition">Wants</button>
+                        <button data-filter="Save" class="filter-btn text-xs font-medium px-3 py-1.5 rounded-lg bg-sand-100 dark:bg-darkbg text-gray-600 dark:text-gray-300 hover:bg-sand-200 transition">Savings</button>
+                        <button data-filter="Income" class="filter-btn text-xs font-medium px-3 py-1.5 rounded-lg bg-sand-100 dark:bg-darkbg text-gray-600 dark:text-gray-300 hover:bg-sand-200 transition">Income</button>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="overflow-x-auto no-scrollbar">
+                        <table class="w-full text-left text-xs sm:text-sm">
                             <thead>
-                                <tr class="bg-sand-50/70 dark:bg-darkbg-700/50 border-b border-sand-100 dark:border-darkbg-700 text-[10px] font-bold tracking-wider text-stone-400 dark:text-stone-500 uppercase">
-                                    <th class="py-3 px-4">Date</th>
-                                    <th class="py-3 px-4">Item Description</th>
-                                    <th class="py-3 px-4">Type</th>
-                                    <th class="py-3 px-4 text-right">Income</th>
-                                    <th class="py-3 px-4 text-right">Expense / Save</th>
-                                    <th class="py-3 px-4 text-center">Action</th>
+                                <tr class="border-b border-sand-200 dark:border-darkborder text-gray-400">
+                                    <th class="py-2.5 px-3 font-medium">Date</th>
+                                    <th class="py-2.5 px-3 font-medium">Type</th>
+                                    <th class="py-2.5 px-3 font-medium">Description</th>
+                                    <th class="py-2.5 px-3 font-medium text-right">Amount</th>
+                                    <th class="py-2.5 px-3 font-medium text-center">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="transaction-rows" class="divide-y divide-sand-100 dark:divide-darkbg-700 text-xs text-stone-700 dark:text-stone-300">
-                                <!-- Dynamic Rows -->
+                            <tbody id="txn-table-body" class="divide-y divide-sand-100 dark:divide-darkborder/50">
+                                <!-- Dynamic rows -->
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-            </main>
+            </div>
 
-            <!-- RIGHT PANEL: Separated Savings Vault & Target Goals Tracker (4 Columns) -->
-            <aside class="lg:col-span-4 flex flex-col gap-6">
-                
-                <!-- 1. GENERAL SAVINGS VAULT -->
-                <div class="bg-white dark:bg-darkbg-800 p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs">
-                    <div class="flex items-center gap-2 mb-4">
-                        <div class="p-2 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 rounded-xl">
-                            <i data-lucide="vault" class="w-5 h-5"></i>
-                        </div>
+            <!-- RIGHT SIDEBAR -->
+            <div class="space-y-6">
+
+                <!-- GENERAL SAVINGS VAULT -->
+                <div class="bg-gradient-to-br from-sage-600 to-sage-700 text-white rounded-2xl p-5 shadow-sm space-y-4">
+                    <div class="flex justify-between items-start">
                         <div>
-                            <h2 class="text-base font-bold text-sand-900 dark:text-white">General Savings Vault</h2>
-                            <p class="text-xs text-stone-400 dark:text-stone-500">Private stored savings stash</p>
+                            <span class="text-xs uppercase tracking-wider text-sage-100 font-medium" id="t-vaultTitle">General Savings Vault</span>
+                            <h3 class="text-3xl font-bold mt-1" id="disp-vault-total">0</h3>
+                        </div>
+                        <div class="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm">
+                            <i data-lucide="piggy-bank" class="w-6 h-6 text-white"></i>
                         </div>
                     </div>
 
-                    <div class="p-4 bg-sand-900 text-white dark:bg-darkbg-700 rounded-xl mb-4">
-                        <span class="text-[10px] text-stone-400 uppercase tracking-wider block">Total Vault Stash</span>
-                        <span class="text-2xl font-bold tracking-tight text-white" id="vault-total-display">Rp 0</span>
-                    </div>
-
-                    <!-- Quick Add to Vault -->
-                    <form onsubmit="handleQuickVaultSave(event)" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                            <input type="number" id="quick-vault-amount" min="0.01" step="any" placeholder="Amount (IDR)" required class="w-full px-3 py-2 text-xs bg-sand-50 dark:bg-darkbg-900 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/30 text-sand-900 dark:text-white">
-                            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shrink-0 flex items-center gap-1">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
-                            </button>
-                        </div>
+                    <form id="form-quick-vault" class="flex gap-2 pt-2">
+                        <input type="number" id="vault-quick-amount" placeholder="Quick deposit" step="any" required class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-sage-200 focus:outline-none focus:bg-white/20">
+                        <button type="submit" class="bg-white text-sage-700 hover:bg-sage-50 font-semibold px-3.5 py-2 rounded-xl text-xs transition whitespace-nowrap shadow-sm" id="t-btnDeposit">
+                            Deposit
+                        </button>
                     </form>
                 </div>
 
-                <!-- 2. SPECIFIC GOALS TRACKER -->
-                <div class="bg-white dark:bg-darkbg-800 p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs relative overflow-hidden">
-                    <div class="flex items-center gap-2 mb-4">
-                        <div class="p-2 bg-sage-100 text-sage-700 dark:bg-sage-950/60 dark:text-sage-400 rounded-xl">
-                            <i data-lucide="target" class="w-5 h-5"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-base font-bold text-sand-900 dark:text-white">Target Goals Tracker</h2>
-                            <p class="text-xs text-stone-400 dark:text-stone-500">Custom wish & dream items</p>
-                        </div>
+                <!-- TARGET GOALS TRACKER -->
+                <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-5 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-base font-semibold flex items-center gap-2">
+                            <i data-lucide="target" class="w-5 h-5 text-sage-600"></i>
+                            <span id="t-titleGoals">Target Goals</span>
+                        </h2>
+                        <button id="btn-add-goal" class="text-xs text-sage-600 dark:text-sage-400 hover:underline font-semibold flex items-center gap-1">
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                            <span id="t-btnNewGoal">New Goal</span>
+                        </button>
                     </div>
 
-                    <!-- Goal Settings Inputs -->
-                    <div class="space-y-3 bg-sand-50 dark:bg-darkbg-700/60 p-4 rounded-xl border border-sand-200/70 dark:border-darkbg-600 mb-4">
-                        <div>
-                            <label class="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Goal Item Name</label>
-                            <input type="text" id="goal-title" onchange="updateGoalInfo()" class="w-full px-3 py-1.5 text-xs font-semibold bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-600 rounded-lg focus:outline-none text-sand-900 dark:text-white">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Target Price (<span class="cur-code">IDR</span>)</label>
-                            <input type="number" id="goal-target" onchange="updateGoalInfo()" class="w-full px-3 py-1.5 text-xs font-semibold bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-600 rounded-lg focus:outline-none text-sand-900 dark:text-white">
-                        </div>
+                    <div id="goals-container" class="space-y-4">
+                        <!-- Dynamic Goals -->
                     </div>
-
-                    <!-- Goal Progress Display Box -->
-                    <div class="p-4 bg-sand-900 text-white dark:bg-darkbg-700 rounded-xl mb-4">
-                        <div class="flex justify-between items-end mb-2">
-                            <div>
-                                <span class="text-[10px] text-stone-400 uppercase tracking-wider block">Saved For Goal</span>
-                                <span class="text-xl font-bold tracking-tight text-white" id="goal-saved-display">Rp 0</span>
-                            </div>
-                            <span class="text-xs font-bold text-sage-400 bg-sage-800/60 px-2 py-0.5 rounded-full border border-sage-700" id="goal-progress-percentage">0%</span>
-                        </div>
-
-                        <!-- Progress Bar -->
-                        <div class="w-full h-2 bg-stone-800 rounded-full overflow-hidden my-2.5">
-                            <div id="goal-progress-bar-fill" class="h-full bg-sage-400 rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-
-                        <div class="flex justify-between text-[11px] text-stone-400 pt-1">
-                            <span>Remaining needed:</span>
-                            <span class="text-stone-200 font-semibold" id="goal-remaining-display">Rp 0</span>
-                        </div>
-                    </div>
-
-                    <!-- Quick Deposit To Goal -->
-                    <form onsubmit="handleQuickGoalSave(event)" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                            <input type="number" id="quick-goal-amount" min="0.01" step="any" placeholder="Amount (IDR)" required class="w-full px-3 py-2 text-xs bg-sand-50 dark:bg-darkbg-900 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/30 text-sand-900 dark:text-white">
-                            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 rounded-xl transition-all shrink-0 flex items-center gap-1">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
-                            </button>
-                        </div>
-                    </form>
                 </div>
 
-            </aside>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- HIDDEN FORM TEMPLATE FOR PRINTABLE PDF STATEMENT REPORT -->
+    <div class="hidden">
+        <div id="pdf-report-content" class="p-8 bg-white text-gray-800 space-y-6">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b pb-4 border-gray-200">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900" id="pdf-report-title">Personal Financial Statement</h1>
+                    <p class="text-xs text-gray-500" id="pdf-app-brand">Generated via WealthFlow App</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs font-semibold text-gray-500">Statement Date</p>
+                    <p class="text-sm font-bold text-gray-800" id="pdf-generated-date">-</p>
+                </div>
+            </div>
+
+            <!-- Overview Grid -->
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div class="p-4 rounded-xl bg-gray-50 border border-gray-200">
+                    <span class="text-xs text-gray-500 font-medium uppercase" id="pdf-lbl-income">Total Income</span>
+                    <h3 class="text-lg font-bold text-emerald-600 mt-1" id="pdf-val-income">0</h3>
+                </div>
+                <div class="p-4 rounded-xl bg-gray-50 border border-gray-200">
+                    <span class="text-xs text-gray-500 font-medium uppercase" id="pdf-lbl-expenses">Total Expenses</span>
+                    <h3 class="text-lg font-bold text-rose-600 mt-1" id="pdf-val-expenses">0</h3>
+                </div>
+                <div class="p-4 rounded-xl bg-gray-50 border border-gray-200">
+                    <span class="text-xs text-gray-500 font-medium uppercase" id="pdf-lbl-wallet">Net Wallet Cash</span>
+                    <h3 class="text-lg font-bold text-sage-700 mt-1" id="pdf-val-wallet">0</h3>
+                </div>
+            </div>
+
+            <!-- Category Breakdown -->
+            <div class="border rounded-xl p-4 bg-gray-50 border-gray-200 space-y-2">
+                <h3 class="text-sm font-bold text-gray-700 border-b pb-2 mb-2" id="pdf-lbl-allocation">Allocation Summary</h3>
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div><span class="text-gray-500">Needs:</span> <strong id="pdf-val-needs">0</strong></div>
+                    <div><span class="text-gray-500">Wants:</span> <strong id="pdf-val-wants">0</strong></div>
+                    <div><span class="text-gray-500">Savings:</span> <strong id="pdf-val-savings">0</strong></div>
+                </div>
+            </div>
+
+            <!-- Log Table -->
+            <div class="space-y-2">
+                <h3 class="text-sm font-bold text-gray-800" id="pdf-lbl-history">Transaction Log</h3>
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-gray-300 text-gray-500">
+                            <th class="py-2 px-1">Date</th>
+                            <th class="py-2 px-1">Type</th>
+                            <th class="py-2 px-1">Description</th>
+                            <th class="py-2 px-1 text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdf-table-rows" class="divide-y divide-gray-200">
+                        <!-- Dynamic rows -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- Hidden Printable Area for PDF Generation -->
-    <div id="pdf-report-content" class="hidden p-8 bg-white text-sand-900 font-sans">
-        <div class="border-b border-stone-200 pb-4 mb-6 flex justify-between items-center">
+    <!-- MODAL: EDIT BASELINE INCOME -->
+    <div id="modal-base-income" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4">
+            <h3 class="font-bold text-lg" id="t-modalBaseTitle">Set Baseline Income</h3>
+            <p class="text-xs text-gray-500" id="t-modalBaseDesc">Set your fixed recurring monthly salary or base earnings.</p>
             <div>
-                <h1 class="text-2xl font-bold">Personal Financial Report</h1>
-                <p class="text-xs text-stone-500">Generated on: <span id="pdf-report-date"></span></p>
+                <input type="number" id="input-base-income" step="any" class="w-full bg-sand-50 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-3 py-2 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-sage-500">
             </div>
-            <div class="text-right">
-                <span class="text-xs font-bold text-sage-700 uppercase tracking-widest">Money Management App</span>
+            <div class="flex justify-end gap-2">
+                <button id="btn-cancel-base" class="px-4 py-2 rounded-xl border border-sand-200 dark:border-darkborder text-xs font-medium hover:bg-sand-100 transition" id="t-btnCancel">Cancel</button>
+                <button id="btn-save-base" class="px-4 py-2 rounded-xl bg-sage-600 hover:bg-sage-700 text-white text-xs font-semibold transition" id="t-btnSave">Save</button>
             </div>
-        </div>
-
-        <div class="grid grid-cols-3 gap-4 mb-6 text-xs">
-            <div class="p-3 bg-stone-50 rounded-lg">
-                <span class="text-stone-400 block uppercase font-bold text-[9px]">Total Income</span>
-                <span id="pdf-total-income" class="text-sm font-bold">Rp 0</span>
-            </div>
-            <div class="p-3 bg-stone-50 rounded-lg">
-                <span class="text-stone-400 block uppercase font-bold text-[9px]">Total Expenses</span>
-                <span id="pdf-total-expenses" class="text-sm font-bold">Rp 0</span>
-            </div>
-            <div class="p-3 bg-stone-50 rounded-lg">
-                <span class="text-stone-400 block uppercase font-bold text-[9px]">Cash Remaining</span>
-                <span id="pdf-net-remaining" class="text-sm font-bold">Rp 0</span>
-            </div>
-        </div>
-
-        <div class="mb-6">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-stone-400 mb-2">Spending Breakdown</h3>
-            <div class="grid grid-cols-3 gap-4 text-xs">
-                <div class="p-2 border border-stone-200 rounded">Needs: <b id="pdf-needs">Rp 0</b></div>
-                <div class="p-2 border border-stone-200 rounded">Wants: <b id="pdf-wants">Rp 0</b></div>
-                <div class="p-2 border border-stone-200 rounded">Savings/Goals: <b id="pdf-savings">Rp 0</b></div>
-            </div>
-        </div>
-
-        <div>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-stone-400 mb-2">Transaction History Log</h3>
-            <table class="w-full text-left text-xs border-collapse">
-                <thead>
-                    <tr class="border-b border-stone-300 text-[10px] font-bold uppercase text-stone-500">
-                        <th class="py-2">Date</th>
-                        <th class="py-2">Item</th>
-                        <th class="py-2">Type</th>
-                        <th class="py-2 text-right">Income</th>
-                        <th class="py-2 text-right">Expense/Save</th>
-                    </tr>
-                </thead>
-                <tbody id="pdf-table-rows" class="divide-y divide-stone-200">
-                </tbody>
-            </table>
         </div>
     </div>
 
-    <!-- Application JavaScript Logic -->
+    <!-- MODAL: ADD GOAL -->
+    <div id="modal-goal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4">
+            <h3 class="font-bold text-lg" id="t-modalGoalTitle">Add Target Goal</h3>
+            <form id="form-goal" class="space-y-3">
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Goal Name</label>
+                    <input type="text" id="goal-title" placeholder="e.g. New Laptop" required class="w-full bg-sand-50 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">Target Amount (Base IDR)</label>
+                    <input type="number" step="any" id="goal-target" placeholder="10000000" required class="w-full bg-sand-50 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" id="btn-cancel-goal" class="px-4 py-2 rounded-xl border border-sand-200 dark:border-darkborder text-xs font-medium hover:bg-sand-100 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-sage-600 hover:bg-sage-700 text-white text-xs font-semibold transition">Save Goal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DEVICE PAIRING & SYNC -->
+    <div id="modal-sync" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-darkcard border border-sand-200 dark:border-darkborder rounded-2xl p-6 w-full max-w-md shadow-xl space-y-5 text-center">
+            <div class="flex justify-between items-center border-b border-sand-100 dark:border-darkborder pb-3">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <i data-lucide="qr-code" class="w-5 h-5 text-sage-600"></i>
+                    <span id="t-modalSyncTitle">Device Pairing & Live Sync</span>
+                </h3>
+                <button id="btn-close-sync" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- QR Container -->
+            <div class="flex flex-col items-center justify-center bg-sand-50 dark:bg-darkbg p-4 rounded-2xl border border-sand-200 dark:border-darkborder">
+                <div id="qrcode" class="p-3 bg-white rounded-xl shadow-sm border border-sand-100"></div>
+                <span class="text-xs text-gray-400 mt-2" id="t-scanInstruction">Scan with mobile device to sync data live</span>
+            </div>
+
+            <!-- Link share -->
+            <div class="space-y-1 text-left">
+                <label class="text-xs text-gray-500">Private Sync Link</label>
+                <div class="flex gap-2">
+                    <input type="text" id="sync-url-input" readonly class="w-full bg-sand-50 dark:bg-darkbg border border-sand-200 dark:border-darkborder rounded-xl px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
+                    <button id="btn-copy-sync-url" class="px-3 py-2 bg-sage-600 hover:bg-sage-700 text-white text-xs rounded-xl font-semibold transition">Copy</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-left text-xs pt-1">
+                <div class="p-3 rounded-xl bg-sand-50 dark:bg-darkbg border border-sand-200/60 dark:border-darkborder">
+                    <div class="font-semibold text-sand-900 dark:text-gray-200 mb-1 flex items-center gap-1">
+                        <i data-lucide="database" class="w-3.5 h-3.5 text-sage-600"></i> Keep Sync
+                    </div>
+                    <p class="text-gray-500 leading-relaxed">Saves financial state in browser storage. Auto-persists.</p>
+                </div>
+                <div class="p-3 rounded-xl bg-sand-50 dark:bg-darkbg border border-sand-200/60 dark:border-darkborder">
+                    <div class="font-semibold text-sand-900 dark:text-gray-200 mb-1 flex items-center gap-1">
+                        <i data-lucide="wifi" class="w-3.5 h-3.5 text-sage-600"></i> Live Sync
+                    </div>
+                    <p class="text-gray-500 leading-relaxed">Broadcasts real-time updates across paired sessions and windows.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
     <script>
-        // If the icon library fails to load (blocked/offline), don't let it break the whole app
-        if (typeof lucide === 'undefined') { window.__noIcons = true; window.lucide = { createIcons() {} }; }
-
-        const DEFAULT_BASE_INCOME = 505955;
-        const DEFAULT_GOAL = { title: "Custom Goal", target: 1000000 };
-        const DEFAULT_TRANSACTIONS = [
-            { id: '1', date: '2026-10-25', desc: 'Water 10k', type: 'Need', amount: 10000, deduct: true, isGoal: false },
-            { id: '2', date: '2026-10-25', desc: 'Boba Milk Tea', type: 'Want', amount: 25000, deduct: true, isGoal: false },
-            { id: '3', date: '2026-10-25', desc: 'General Savings Deposit', type: 'Save', amount: 117000, deduct: true, isGoal: false }
-        ];
-
-        // Global State
-        let baseIncome = JSON.parse(localStorage.getItem('pm_base_income')) ?? DEFAULT_BASE_INCOME;
-        let goalState = JSON.parse(localStorage.getItem('pm_goal_state')) || DEFAULT_GOAL;
-        let transactions = JSON.parse(localStorage.getItem('pm_transactions')) || DEFAULT_TRANSACTIONS;
-        let activeFilter = 'All';
-        let chartInstance = null;
-        let isDarkMode = localStorage.getItem('pm_theme') === 'dark';
-
-        // ---------- Language Support ----------
-        const LANGS = {
-            en: { name: 'English', locale: 'en-US' },
-            id: { name: 'Bahasa Indonesia', locale: 'id-ID' },
-            ms: { name: 'Bahasa Melayu', locale: 'ms-MY' },
-            zh: { name: '中文 (简体)', locale: 'zh-CN' }
-        };
-
-        // Keys are the English texts used in the page
+        // FULL MULTI-LANGUAGE DICTIONARY (DICT)
         const DICT = {
+            en: {
+                appName: "WealthFlow",
+                subtitle: "Smart Personal Finance",
+                syncBtn: "Restore / Sync",
+                cardBaseIncome: "Baseline Income",
+                cardBaseSub: "Fixed monthly earnings setup",
+                cardTotalIncome: "Total Income",
+                cardTotalIncomeSub: "Base + Added side earnings",
+                cardTotalExpenses: "Total Expenses",
+                cardExpensesSub: "Needs & Wants spent",
+                cardNetWallet: "Cash in Wallet",
+                cardWalletSub: "Net available liquid funds",
+                sectionAllocation: "Financial Allocation Breakdown",
+                lblNeeds: "Needs",
+                lblWants: "Wants",
+                lblSavings: "Savings & Goals",
+                titleAddTxn: "Log Transaction",
+                lblDate: "Date",
+                lblType: "Type",
+                lblDesc: "Description",
+                lblAmount: "Amount",
+                lblDeduct: "Deduct from Cash Balance?",
+                optYes: "Yes",
+                optNo: "No",
+                btnAdd: "Add Record",
+                titleHistory: "Transaction History",
+                vaultTitle: "General Savings Vault",
+                btnDeposit: "Deposit",
+                titleGoals: "Target Goals",
+                btnNewGoal: "New Goal",
+                modalBaseTitle: "Set Baseline Income",
+                modalBaseDesc: "Set your fixed recurring monthly salary or base earnings.",
+                btnCancel: "Cancel",
+                btnSave: "Save",
+                modalGoalTitle: "Add Target Goal",
+                modalSyncTitle: "Device Pairing & Live Sync",
+                scanInstruction: "Scan with mobile device to sync data live"
+            },
             id: {
-                "Personal Money Management":"Manajemen Keuangan Pribadi","Daily Tracker, Savings Vault & Target Goals":"Pencatat Harian, Brankas Tabungan & Target Impian",
-                "Dark Mode":"Mode Gelap","Light Mode":"Mode Terang","Save Data":"Simpan Data","Export My Log (PDF)":"Ekspor Catatan (PDF)","Reset":"Atur Ulang",
-                "Baseline Income":"Pendapatan Dasar","Fixed income baseline":"Pendapatan tetap dasar","Total Income":"Total Pemasukan","Base + Additional Incomes":"Dasar + Pemasukan Tambahan",
-                "Total Expenses":"Total Pengeluaran","Needs + Wants Spent":"Kebutuhan + Keinginan yang Dibelanjakan","Cash in Wallet":"Uang di Dompet","Net Balance after Deductions":"Saldo Bersih setelah Potongan",
-                "Spending & Allocation Breakdown":"Rincian Pengeluaran & Alokasi","Category":"Kategori","Amount":"Jumlah","% Allocation":"% Alokasi","Needs":"Kebutuhan","Wants":"Keinginan","Savings & Goals":"Tabungan & Target",
-                "Log Daily Entry":"Catat Transaksi Harian","Date":"Tanggal","Type":"Jenis","Item Description":"Deskripsi Item","Amount (":"Jumlah (",
-                "Need (Expense)":"Kebutuhan (Pengeluaran)","Want (Expense)":"Keinginan (Pengeluaran)","Save (Savings / Goal)":"Tabung (Tabungan / Target)","Income (+)":"Pemasukan (+)",
-                "Deduct from Cash Balance (Wallet)?":"Kurangi dari Saldo Tunai (Dompet)?","Yes (Deduct)":"Ya (Kurangi)","No (Keep Balance)":"Tidak (Saldo Tetap)","Add Entry":"Tambah Catatan",
-                "Daily Money Log":"Catatan Keuangan Harian","Filter, search, and manage your logged transactions":"Filter, cari, dan kelola transaksi Anda","All":"Semua","Savings":"Tabungan","Income":"Pemasukan",
-                "Expense / Save":"Pengeluaran / Tabungan","Action":"Aksi",
-                "General Savings Vault":"Brankas Tabungan Umum","Private stored savings stash":"Simpanan tabungan pribadi","Total Vault Stash":"Total Isi Brankas","Add":"Tambah",
-                "Target Goals Tracker":"Pelacak Target","Custom wish & dream items":"Barang impian & keinginan khusus","Goal Item Name":"Nama Barang Target","Target Price (":"Harga Target (",
-                "Saved For Goal":"Terkumpul untuk Target","Remaining needed:":"Sisa yang dibutuhkan:",
-                "Personal Financial Report":"Laporan Keuangan Pribadi","Generated on:":"Dibuat pada:","Money Management App":"Aplikasi Manajemen Uang","Cash Remaining":"Sisa Uang Tunai",
-                "Spending Breakdown":"Rincian Pengeluaran","Needs:":"Kebutuhan:","Wants:":"Keinginan:","Savings/Goals:":"Tabungan/Target:","Transaction History Log":"Riwayat Transaksi","Item":"Item","Expense/Save":"Pengeluaran/Tabungan",
-                "No entries found.":"Tidak ada catatan.","Deducted":"Dikurangi","No Deduct":"Tidak Dikurangi","Delete":"Hapus","Need":"Kebutuhan","Want":"Keinginan","Save":"Tabungan",
-                "e.g. Water 10k, Boba...":"mis. Air 10rb, Boba...","Search...":"Cari...",
-                "All data saved to Local Storage!":"Semua data tersimpan!","Log entry added!":"Catatan ditambahkan!","Added to Savings Vault!":"Ditambahkan ke Brankas Tabungan!",
-                "Added to Goal Tracker!":"Ditambahkan ke Pelacak Target!","Baseline Income updated!":"Pendapatan dasar diperbarui!","Target Goal updated!":"Target diperbarui!",
-                "Entry deleted":"Catatan dihapus","All data reset to initial defaults":"Semua data dikembalikan ke awal","Generating PDF Report...":"Membuat laporan PDF...","Currency changed to":"Mata uang diubah ke",
-                "Backup":"Cadangkan","Restore":"Pulihkan","Backup downloaded!":"Cadangan diunduh!","Backup restored!":"Cadangan dipulihkan!","Invalid backup file":"File cadangan tidak valid","Replace the data on this device with this backup?":"Ganti data di perangkat ini dengan cadangan ini?","Live rates unavailable, showing unconverted values":"Kurs langsung tidak tersedia, nilai ditampilkan tanpa konversi",
-                "Sign in with Google":"Masuk dengan Google","Synced":"Tersinkron","Syncing...":"Menyinkronkan...","Sign-in failed":"Gagal masuk","Sign out? Your data stays on this device.":"Keluar? Data Anda tetap ada di perangkat ini.","Cloud sync error":"Kesalahan sinkronisasi cloud","Cloud already has data. OK = use the cloud data on this device. Cancel = merge this device's entries into the cloud.":"Cloud sudah berisi data. OK = pakai data cloud di perangkat ini. Batal = gabungkan data perangkat ini ke cloud.","Reset will also clear your cloud data. Continue?":"Atur ulang juga akan menghapus data cloud Anda. Lanjutkan?",
-                "Sync between your devices":"Sinkronkan antar perangkat Anda","Turn on syncing, then scan the QR code with your other device's camera.":"Aktifkan sinkronisasi, lalu pindai kode QR dengan kamera perangkat lain Anda.","Start syncing":"Mulai sinkronisasi","Scan this QR code with your other device's camera, or open the link there.":"Pindai kode QR ini dengan kamera perangkat lain Anda, atau buka tautannya di sana.","Copy link":"Salin tautan","Keep this private: anyone with this link can see and edit your log.":"Jaga kerahasiaannya: siapa pun yang punya tautan ini dapat melihat dan mengubah catatan Anda.","Stop syncing on this device":"Hentikan sinkronisasi di perangkat ini","Close":"Tutup","Sync":"Sinkron","Link copied!":"Tautan disalin!","Connect this device to your synced log? The synced data will be used here.":"Hubungkan perangkat ini ke catatan tersinkron Anda? Data tersinkron akan dipakai di sini.","Stop syncing on this device? Your data stays here.":"Hentikan sinkronisasi di perangkat ini? Data Anda tetap di sini.",
-                "Connect this device?":"Hubungkan perangkat ini?","Choose how this device should sync with your log.":"Pilih cara perangkat ini menyinkronkan catatan Anda.","Keep Sync":"Tetap Sinkron","Stays connected, even after you close the website.":"Tetap terhubung, bahkan setelah Anda menutup situs.","Live Sync":"Sinkron Langsung","Only syncs while this website is open. When you close it, this device disconnects (its copy of the data stays here).":"Hanya menyinkronkan saat situs ini terbuka. Saat ditutup, perangkat ini terputus (salinan datanya tetap di sini).","Cancel":"Batal","Live":"Langsung",
-                "Restore from backup file":"Pulihkan dari file cadangan",
-                "Keep Sync (stays connected)":"Tetap Sinkron (tetap terhubung)",
-                "Live Sync (stops when you close this page)":"Sinkron Langsung (berhenti saat halaman ditutup)",
-                "Only syncs while this website is open. When you close it, this device goes back to how it was before and nothing from your log stays here.":"Hanya menyinkronkan saat situs ini terbuka. Saat Anda menutupnya, perangkat ini kembali seperti semula dan tidak ada data catatan Anda yang tertinggal.",
-                "Live Sync (nothing is kept on this device)":"Sinkron Langsung (tidak ada data disimpan di perangkat ini)",
-                "Stop Live Sync? This device will go back to how it was before.":"Hentikan Sinkron Langsung? Perangkat ini akan kembali seperti semula.",
-                "Sync code not found":"Kode sinkron tidak ditemukan"
+                appName: "WealthFlow",
+                subtitle: "Keuangan Pribadi Pintar",
+                syncBtn: "Pulihkan / Sinkron",
+                cardBaseIncome: "Pemasukan Dasar",
+                cardBaseSub: "Pengaturan gaji tetap bulanan",
+                cardTotalIncome: "Total Pemasukan",
+                cardTotalIncomeSub: "Dasar + Pemasukan tambahan",
+                cardTotalExpenses: "Total Pengeluaran",
+                cardExpensesSub: "Kebutuhan & Keinginan",
+                cardNetWallet: "Uang di Dompet",
+                cardWalletSub: "Sisa saldo kas tersedia",
+                sectionAllocation: "Alokasi Keuangan",
+                lblNeeds: "Kebutuhan",
+                lblWants: "Keinginan",
+                lblSavings: "Tabungan & Target",
+                titleAddTxn: "Catat Transaksi",
+                lblDate: "Tanggal",
+                lblType: "Tipe",
+                lblDesc: "Deskripsi",
+                lblAmount: "Jumlah",
+                lblDeduct: "Potong dari Saldo Kas?",
+                optYes: "Ya",
+                optNo: "Tidak",
+                btnAdd: "Tambah Transaksi",
+                titleHistory: "Riwayat Transaksi",
+                vaultTitle: "Brankas Tabungan Utama",
+                btnDeposit: "Setor",
+                titleGoals: "Target Tabungan",
+                btnNewGoal: "Target Baru",
+                modalBaseTitle: "Atur Pemasukan Dasar",
+                modalBaseDesc: "Tentukan pendapatan atau gaji pokok bulanan Anda.",
+                btnCancel: "Batal",
+                btnSave: "Simpan",
+                modalGoalTitle: "Tambah Target Tabungan",
+                modalSyncTitle: "Sinkronisasi & Hubungkan Perangkat",
+                scanInstruction: "Pindai dengan HP untuk menyelaraskan data"
             },
             ms: {
-                "Personal Money Management":"Pengurusan Wang Peribadi","Daily Tracker, Savings Vault & Target Goals":"Penjejak Harian, Peti Simpanan & Matlamat Sasaran",
-                "Dark Mode":"Mod Gelap","Light Mode":"Mod Cerah","Save Data":"Simpan Data","Export My Log (PDF)":"Eksport Log Saya (PDF)","Reset":"Set Semula",
-                "Baseline Income":"Pendapatan Asas","Fixed income baseline":"Asas pendapatan tetap","Total Income":"Jumlah Pendapatan","Base + Additional Incomes":"Asas + Pendapatan Tambahan",
-                "Total Expenses":"Jumlah Perbelanjaan","Needs + Wants Spent":"Keperluan + Kehendak Dibelanjakan","Cash in Wallet":"Wang Tunai dalam Dompet","Net Balance after Deductions":"Baki Bersih selepas Potongan",
-                "Spending & Allocation Breakdown":"Pecahan Perbelanjaan & Peruntukan","Category":"Kategori","Amount":"Jumlah","% Allocation":"% Peruntukan","Needs":"Keperluan","Wants":"Kehendak","Savings & Goals":"Simpanan & Matlamat",
-                "Log Daily Entry":"Rekod Entri Harian","Date":"Tarikh","Type":"Jenis","Item Description":"Perihal Item","Amount (":"Jumlah (",
-                "Need (Expense)":"Keperluan (Perbelanjaan)","Want (Expense)":"Kehendak (Perbelanjaan)","Save (Savings / Goal)":"Simpan (Simpanan / Matlamat)","Income (+)":"Pendapatan (+)",
-                "Deduct from Cash Balance (Wallet)?":"Tolak daripada Baki Tunai (Dompet)?","Yes (Deduct)":"Ya (Tolak)","No (Keep Balance)":"Tidak (Kekalkan Baki)","Add Entry":"Tambah Entri",
-                "Daily Money Log":"Log Wang Harian","Filter, search, and manage your logged transactions":"Tapis, cari dan urus transaksi anda","All":"Semua","Savings":"Simpanan","Income":"Pendapatan",
-                "Expense / Save":"Perbelanjaan / Simpanan","Action":"Tindakan",
-                "General Savings Vault":"Peti Simpanan Am","Private stored savings stash":"Simpanan peribadi","Total Vault Stash":"Jumlah Simpanan Peti","Add":"Tambah",
-                "Target Goals Tracker":"Penjejak Matlamat Sasaran","Custom wish & dream items":"Barang impian & hajat khas","Goal Item Name":"Nama Barang Matlamat","Target Price (":"Harga Sasaran (",
-                "Saved For Goal":"Disimpan untuk Matlamat","Remaining needed:":"Baki diperlukan:",
-                "Personal Financial Report":"Laporan Kewangan Peribadi","Generated on:":"Dijana pada:","Money Management App":"Aplikasi Pengurusan Wang","Cash Remaining":"Baki Tunai",
-                "Spending Breakdown":"Pecahan Perbelanjaan","Needs:":"Keperluan:","Wants:":"Kehendak:","Savings/Goals:":"Simpanan/Matlamat:","Transaction History Log":"Log Sejarah Transaksi","Item":"Item","Expense/Save":"Belanja/Simpan",
-                "No entries found.":"Tiada entri ditemui.","Deducted":"Ditolak","No Deduct":"Tidak Ditolak","Delete":"Padam","Need":"Keperluan","Want":"Kehendak","Save":"Simpanan",
-                "e.g. Water 10k, Boba...":"cth. Air 10k, Boba...","Search...":"Cari...",
-                "All data saved to Local Storage!":"Semua data disimpan!","Log entry added!":"Entri ditambah!","Added to Savings Vault!":"Ditambah ke Peti Simpanan!",
-                "Added to Goal Tracker!":"Ditambah ke Penjejak Matlamat!","Baseline Income updated!":"Pendapatan asas dikemas kini!","Target Goal updated!":"Matlamat sasaran dikemas kini!",
-                "Entry deleted":"Entri dipadam","All data reset to initial defaults":"Semua data ditetapkan semula","Generating PDF Report...":"Menjana laporan PDF...","Currency changed to":"Mata wang ditukar kepada",
-                "Backup":"Sandaran","Restore":"Pulihkan","Backup downloaded!":"Sandaran dimuat turun!","Backup restored!":"Sandaran dipulihkan!","Invalid backup file":"Fail sandaran tidak sah","Replace the data on this device with this backup?":"Gantikan data pada peranti ini dengan sandaran ini?","Live rates unavailable, showing unconverted values":"Kadar langsung tidak tersedia, nilai dipaparkan tanpa penukaran",
-                "Sign in with Google":"Log masuk dengan Google","Synced":"Disegerakkan","Syncing...":"Menyegerak...","Sign-in failed":"Log masuk gagal","Sign out? Your data stays on this device.":"Log keluar? Data anda kekal pada peranti ini.","Cloud sync error":"Ralat segerak awan","Cloud already has data. OK = use the cloud data on this device. Cancel = merge this device's entries into the cloud.":"Awan sudah mempunyai data. OK = guna data awan pada peranti ini. Batal = gabungkan entri peranti ini ke awan.","Reset will also clear your cloud data. Continue?":"Set semula juga akan memadam data awan anda. Teruskan?",
-                "Sync between your devices":"Segerakkan antara peranti anda","Turn on syncing, then scan the QR code with your other device's camera.":"Hidupkan penyegerakan, kemudian imbas kod QR dengan kamera peranti lain anda.","Start syncing":"Mula menyegerak","Scan this QR code with your other device's camera, or open the link there.":"Imbas kod QR ini dengan kamera peranti lain anda, atau buka pautan di sana.","Copy link":"Salin pautan","Keep this private: anyone with this link can see and edit your log.":"Rahsiakan ini: sesiapa yang ada pautan ini boleh melihat dan mengubah log anda.","Stop syncing on this device":"Berhenti menyegerak pada peranti ini","Close":"Tutup","Sync":"Segerak","Link copied!":"Pautan disalin!","Connect this device to your synced log? The synced data will be used here.":"Sambungkan peranti ini ke log tersegerak anda? Data tersegerak akan digunakan di sini.","Stop syncing on this device? Your data stays here.":"Berhenti menyegerak pada peranti ini? Data anda kekal di sini.",
-                "Connect this device?":"Sambungkan peranti ini?","Choose how this device should sync with your log.":"Pilih cara peranti ini menyegerak log anda.","Keep Sync":"Kekal Segerak","Stays connected, even after you close the website.":"Kekal bersambung, walaupun selepas anda menutup laman web.","Live Sync":"Segerak Langsung","Only syncs while this website is open. When you close it, this device disconnects (its copy of the data stays here).":"Hanya menyegerak semasa laman web ini dibuka. Apabila ditutup, peranti ini terputus (salinan datanya kekal di sini).","Cancel":"Batal","Live":"Langsung"
+                appName: "WealthFlow",
+                subtitle: "Pengurusan Kewangan Pintar",
+                syncBtn: "Pulih / Senarasikan",
+                cardBaseIncome: "Pendapatan Asas",
+                cardBaseSub: "Tetapan gaji bulanan",
+                cardTotalIncome: "Jumlah Pendapatan",
+                cardTotalIncomeSub: "Asas + Pendapatan sampingan",
+                cardTotalExpenses: "Jumlah Perbelanjaan",
+                cardExpensesSub: "Keperluan & Kehendak",
+                cardNetWallet: "Tunai dalam Dompet",
+                cardWalletSub: "Baki tunai bersih",
+                sectionAllocation: "Pecahan Agihan Kewangan",
+                lblNeeds: "Keperluan",
+                lblWants: "Kehendak",
+                lblSavings: "Simpanan & Sasaran",
+                titleAddTxn: "Log Transaksi",
+                lblDate: "Tarikh",
+                lblType: "Jenis",
+                lblDesc: "Keterangan",
+                lblAmount: "Jumlah",
+                lblDeduct: "Tolak daripada Baki Dompet?",
+                optYes: "Ya",
+                optNo: "Tidak",
+                btnAdd: "Tambah Rekod",
+                titleHistory: "Sejarah Transaksi",
+                vaultTitle: "Bilik Simpanan Utama",
+                btnDeposit: "Deposit",
+                titleGoals: "Sasaran Simpanan",
+                btnNewGoal: "Sasaran Baru",
+                modalBaseTitle: "Tetapkan Pendapatan Asas",
+                modalBaseDesc: "Tetapkan gaji bulanan tetap anda.",
+                btnCancel: "Batal",
+                btnSave: "Simpan",
+                modalGoalTitle: "Tambah Sasaran Baru",
+                modalSyncTitle: "Penyelarasan & Pasangan Peranti",
+                scanInstruction: "Imbas dengan telefon pintar untuk penyelarasan"
             },
             zh: {
-                "Personal Money Management":"个人理财管理","Daily Tracker, Savings Vault & Target Goals":"每日记录、储蓄金库与目标",
-                "Dark Mode":"深色模式","Light Mode":"浅色模式","Save Data":"保存数据","Export My Log (PDF)":"导出我的记录 (PDF)","Reset":"重置",
-                "Baseline Income":"基础收入","Fixed income baseline":"固定收入基准","Total Income":"总收入","Base + Additional Incomes":"基础 + 额外收入",
-                "Total Expenses":"总支出","Needs + Wants Spent":"已花费的必需 + 想要","Cash in Wallet":"钱包现金","Net Balance after Deductions":"扣除后的净余额",
-                "Spending & Allocation Breakdown":"支出与分配明细","Category":"类别","Amount":"金额","% Allocation":"分配比例","Needs":"必需","Wants":"想要","Savings & Goals":"储蓄与目标",
-                "Log Daily Entry":"记录每日条目","Date":"日期","Type":"类型","Item Description":"项目说明","Amount (":"金额 (",
-                "Need (Expense)":"必需（支出）","Want (Expense)":"想要（支出）","Save (Savings / Goal)":"储蓄（储蓄 / 目标）","Income (+)":"收入 (+)",
-                "Deduct from Cash Balance (Wallet)?":"是否从钱包现金余额中扣除？","Yes (Deduct)":"是（扣除）","No (Keep Balance)":"否（保留余额）","Add Entry":"添加条目",
-                "Daily Money Log":"每日资金记录","Filter, search, and manage your logged transactions":"筛选、搜索并管理你的交易记录","All":"全部","Savings":"储蓄","Income":"收入",
-                "Expense / Save":"支出 / 储蓄","Action":"操作",
-                "General Savings Vault":"通用储蓄金库","Private stored savings stash":"私人储蓄存款","Total Vault Stash":"金库总额","Add":"添加",
-                "Target Goals Tracker":"目标追踪","Custom wish & dream items":"自定义心愿与梦想物品","Goal Item Name":"目标物品名称","Target Price (":"目标价格 (",
-                "Saved For Goal":"已为目标储蓄","Remaining needed:":"还需:",
-                "Personal Financial Report":"个人财务报告","Generated on:":"生成于:","Money Management App":"理财管理应用","Cash Remaining":"剩余现金",
-                "Spending Breakdown":"支出明细","Needs:":"必需:","Wants:":"想要:","Savings/Goals:":"储蓄/目标:","Transaction History Log":"交易历史记录","Item":"项目","Expense/Save":"支出/储蓄",
-                "No entries found.":"没有找到条目。","Deducted":"已扣除","No Deduct":"未扣除","Delete":"删除","Need":"必需","Want":"想要","Save":"储蓄",
-                "e.g. Water 10k, Boba...":"例如：水 10k、奶茶...","Search...":"搜索...",
-                "All data saved to Local Storage!":"所有数据已保存！","Log entry added!":"条目已添加！","Added to Savings Vault!":"已添加到储蓄金库！",
-                "Added to Goal Tracker!":"已添加到目标追踪！","Baseline Income updated!":"基础收入已更新！","Target Goal updated!":"目标已更新！",
-                "Entry deleted":"条目已删除","All data reset to initial defaults":"所有数据已重置为初始默认值","Generating PDF Report...":"正在生成 PDF 报告...","Currency changed to":"货币已更改为",
-                "Backup":"备份","Restore":"恢复","Backup downloaded!":"备份已下载！","Backup restored!":"备份已恢复！","Invalid backup file":"备份文件无效","Replace the data on this device with this backup?":"用此备份替换本设备上的数据？","Live rates unavailable, showing unconverted values":"无法获取实时汇率，显示未换算的数值",
-                "Sign in with Google":"使用 Google 登录","Synced":"已同步","Syncing...":"同步中...","Sign-in failed":"登录失败","Sign out? Your data stays on this device.":"退出登录？数据仍保留在此设备上。","Cloud sync error":"云同步出错","Cloud already has data. OK = use the cloud data on this device. Cancel = merge this device's entries into the cloud.":"云端已有数据。确定 = 在此设备上使用云端数据。取消 = 将此设备的条目合并到云端。","Reset will also clear your cloud data. Continue?":"重置也会清除你的云端数据。继续？",
-                "Sync between your devices":"在你的设备之间同步","Turn on syncing, then scan the QR code with your other device's camera.":"开启同步，然后用另一台设备的相机扫描二维码。","Start syncing":"开始同步","Scan this QR code with your other device's camera, or open the link there.":"用另一台设备的相机扫描此二维码，或在那里打开链接。","Copy link":"复制链接","Keep this private: anyone with this link can see and edit your log.":"请保密：任何拥有此链接的人都能查看和编辑你的记录。","Stop syncing on this device":"停止在此设备上同步","Close":"关闭","Sync":"同步","Link copied!":"链接已复制！","Connect this device to your synced log? The synced data will be used here.":"将此设备连接到你已同步的记录？同步的数据将在此使用。","Stop syncing on this device? Your data stays here.":"停止在此设备上同步？数据会保留在此设备上。",
-                "Connect this device?":"连接此设备？","Choose how this device should sync with your log.":"选择此设备与你的记录同步的方式。","Keep Sync":"保持同步","Stays connected, even after you close the website.":"即使关闭网站也保持连接。","Live Sync":"实时同步","Only syncs while this website is open. When you close it, this device disconnects (its copy of the data stays here).":"仅在此网站打开时同步。关闭后此设备会断开连接（其数据副本仍保留在此处）。","Cancel":"取消","Live":"实时"
+                appName: "WealthFlow",
+                subtitle: "智能个人财务管理",
+                syncBtn: "恢复 / 同步",
+                cardBaseIncome: "基础收入",
+                cardBaseSub: "每月固定薪资设置",
+                cardTotalIncome: "总收入",
+                cardTotalIncomeSub: "基础 + 额外副业收入",
+                cardTotalExpenses: "总支出",
+                cardExpensesSub: "刚需与日常消费",
+                cardNetWallet: "钱包现金",
+                cardWalletSub: "净可用流动资金",
+                sectionAllocation: "财务分配明细",
+                lblNeeds: "刚需 (Needs)",
+                lblWants: "消费 (Wants)",
+                lblSavings: "储蓄与目标 (Savings)",
+                titleAddTxn: "记录交易",
+                lblDate: "日期",
+                lblType: "类型",
+                lblDesc: "描述",
+                lblAmount: "金额",
+                lblDeduct: "是否从现金余额扣除？",
+                optYes: "是",
+                optNo: "否",
+                btnAdd: "添加记录",
+                titleHistory: "交易历史记录",
+                vaultTitle: "通用储蓄金库",
+                btnDeposit: "存入",
+                titleGoals: "储蓄目标",
+                btnNewGoal: "新建目标",
+                modalBaseTitle: "设置基础收入",
+                modalBaseDesc: "设置您固定的每月基本薪资收入。",
+                btnCancel: "取消",
+                btnSave: "保存",
+                modalGoalTitle: "添加储蓄目标",
+                modalSyncTitle: "设备配对与实时同步",
+                scanInstruction: "使用手机扫码同步数据"
             }
         };
 
-        let lang = localStorage.getItem('pm_lang');
-        if (!LANGS[lang]) lang = 'en';
+        // SYMBOLS & ZERO DECIMAL CURRENCIES
+        const CURRENCY_SYMBOLS = {
+            USD: "$", EUR: "€", GBP: "£", JPY: "¥", CNY: "¥", IDR: "Rp ", MYR: "RM ", SGD: "S$", BND: "B$",
+            THB: "฿", PHP: "₱", VND: "₫", INR: "₹", KRW: "₩", HKD: "HK$", TWD: "NT$", AUD: "A$", NZD: "NZ$",
+            CAD: "C$", CHF: "Fr", SEK: "kr", NOK: "kr", DKK: "kr", AED: "AED ", SAR: "SR ", QAR: "QR ",
+            KWD: "KD ", TRY: "₺", RUB: "₽", BRL: "R$", MXN: "$", ARS: "$", CLP: "$", COP: "$", ZAR: "R",
+            EGP: "E£", NGN: "₦", KES: "KSh ", PKR: "Rs ", BDT: "৳", LKR: "Rs ", ILS: "₪", PLN: "zł", CZK: "Kč", HUF: "Ft "
+        };
 
-        function t(key) {
-            return (DICT[lang] && DICT[lang][key]) || key;
-        }
+        const ZERO_DECIMAL_CURRENCIES = ['IDR', 'JPY', 'KRW', 'VND', 'CLP', 'COP', 'HUF'];
 
-        function applyLang() {
-            document.documentElement.lang = lang;
-            document.title = t('Personal Money Management');
+        // DEFAULT APP STATE (STORED IN BASE IDR VALUES)
+        const DEFAULT_STATE = {
+            currency: 'IDR',
+            language: 'en',
+            baseIncome: 5000000,
+            vaultBalance: 1200000,
+            transactions: [
+                { id: '1', date: new Date().toISOString().split('T')[0], type: 'Need', desc: 'Rent Payment', amount: 1500000 },
+                { id: '2', date: new Date().toISOString().split('T')[0], type: 'Want', desc: 'Dining Out', amount: 200000 },
+                { id: '3', date: new Date().toISOString().split('T')[0], type: 'Save', desc: 'Vault Deposit', amount: 500000, deductWallet: true },
+                { id: '4', date: new Date().toISOString().split('T')[0], type: 'Income', desc: 'Freelance Design', amount: 1000000 }
+            ],
+            goals: [
+                { id: 'g1', title: 'New Laptop', target: 12000000, saved: 4500000 }
+            ]
+        };
 
-            const sel = document.getElementById('lang-select');
-            if (!sel.options.length) {
-                sel.innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join('');
+        let appState = loadState();
+        let exchangeRates = { USD: 1, IDR: 15800 }; // Fallback defaults
+        let chartInstance = null;
+        let activeFilter = 'All';
+        const syncChannel = new BroadcastChannel('wealthflow_sync');
+
+        // CHECK SYNC PARAMS IN HASH (#sync=...)
+        function checkHashSync() {
+            if (window.location.hash.startsWith('#sync=')) {
+                try {
+                    const encoded = window.location.hash.replace('#sync=', '');
+                    const restored = JSON.parse(decodeURIComponent(atob(encoded)));
+                    if (restored && typeof restored === 'object') {
+                        appState = restored;
+                        saveState(false);
+                        history.replaceState(null, '', window.location.pathname);
+                    }
+                } catch(e) { console.error('Sync Hash parsing error', e); }
             }
-            sel.value = lang;
-
-            // Translate every static text node (original English is remembered on the node)
-            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
-                acceptNode(n) {
-                    const tag = n.parentNode.nodeName;
-                    return (tag === 'SCRIPT' || tag === 'STYLE') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
-                }
-            });
-            const nodes = [];
-            while (walker.nextNode()) nodes.push(walker.currentNode);
-            nodes.forEach(n => {
-                if (n.__en === undefined) n.__en = n.nodeValue;
-                const key = n.__en.trim();
-                const tr = lang !== 'en' && key && DICT[lang][key];
-                n.nodeValue = tr ? n.__en.replace(key, tr) : n.__en;
-            });
-
-            document.getElementById('tx-desc').placeholder = t('e.g. Water 10k, Boba...');
-            document.getElementById('search-input').placeholder = t('Search...');
         }
 
-        function setLang(code) {
-            lang = code;
-            localStorage.setItem('pm_lang', code);
-            render();
-            updateThemeUI();
-            updateCurrencyUI();
-            applyLang();
-            updateCloudUI();
-        }
-
-        // ---------- Currency Support ----------
-        // [code, name, locale]
-        const CURRENCIES = [
-            ['USD','US Dollar','en-US'], ['EUR','Euro','de-DE'], ['GBP','British Pound','en-GB'],
-            ['JPY','Japanese Yen','ja-JP'], ['CNY','Chinese Yuan (RMB)','zh-CN'], ['IDR','Indonesian Rupiah','id-ID'],
-            ['MYR','Malaysian Ringgit','ms-MY'], ['SGD','Singapore Dollar','en-SG'], ['BND','Brunei Dollar','ms-BN'],
-            ['BWP','Botswana Pula','en-BW'], ['THB','Thai Baht','th-TH'], ['PHP','Philippine Peso','en-PH'],
-            ['VND','Vietnamese Dong','vi-VN'], ['INR','Indian Rupee','en-IN'], ['KRW','South Korean Won','ko-KR'],
-            ['HKD','Hong Kong Dollar','zh-HK'], ['TWD','New Taiwan Dollar','zh-TW'], ['AUD','Australian Dollar','en-AU'],
-            ['NZD','New Zealand Dollar','en-NZ'], ['CAD','Canadian Dollar','en-CA'], ['CHF','Swiss Franc','de-CH'],
-            ['SEK','Swedish Krona','sv-SE'], ['NOK','Norwegian Krone','nb-NO'], ['DKK','Danish Krone','da-DK'],
-            ['AED','UAE Dirham','en-AE'], ['SAR','Saudi Riyal','en-SA'], ['QAR','Qatari Riyal','en-QA'],
-            ['KWD','Kuwaiti Dinar','en-KW'], ['TRY','Turkish Lira','tr-TR'], ['RUB','Russian Ruble','ru-RU'],
-            ['BRL','Brazilian Real','pt-BR'], ['MXN','Mexican Peso','es-MX'], ['ARS','Argentine Peso','es-AR'],
-            ['CLP','Chilean Peso','es-CL'], ['COP','Colombian Peso','es-CO'], ['ZAR','South African Rand','en-ZA'],
-            ['EGP','Egyptian Pound','en-EG'], ['NGN','Nigerian Naira','en-NG'], ['KES','Kenyan Shilling','en-KE'],
-            ['PKR','Pakistani Rupee','en-PK'], ['BDT','Bangladeshi Taka','en-BD'], ['LKR','Sri Lankan Rupee','en-LK'],
-            ['ILS','Israeli Shekel','he-IL'], ['PLN','Polish Zloty','pl-PL'], ['CZK','Czech Koruna','cs-CZ'],
-            ['HUF','Hungarian Forint','hu-HU']
-        ].map(([code, name, locale]) => ({ code, name, locale }));
-
-        // Currencies normally shown without decimals
-        const ZERO_DECIMAL = ['IDR', 'JPY', 'KRW', 'VND', 'CLP', 'COP', 'HUF'];
-
-        let currencyCode = localStorage.getItem('pm_currency') || 'IDR';
-
-        function getCurrency() {
-            return CURRENCIES.find(c => c.code === currencyCode) || CURRENCIES[5];
-        }
-
-        function getCurrencySymbol() {
-            const c = getCurrency();
-            const parts = new Intl.NumberFormat(c.locale, { style: 'currency', currency: c.code }).formatToParts(0);
-            return parts.find(p => p.type === 'currency').value;
-        }
-
-        function updateCurrencyUI() {
-            const sel = document.getElementById('currency-select');
-            if (!sel.options.length) {
-                sel.innerHTML = CURRENCIES.map(c => `<option value="${c.code}">${c.code} – ${c.name}</option>`).join('');
+        // LOAD / SAVE STATE
+        function loadState() {
+            const saved = localStorage.getItem('wealthflow_app_data');
+            if (saved) {
+                try { return JSON.parse(saved); } catch (e) {}
             }
-            sel.value = currencyCode;
-
-            document.querySelectorAll('.cur-symbol').forEach(el => el.innerText = getCurrencySymbol());
-            document.querySelectorAll('.cur-code').forEach(el => el.innerText = currencyCode);
-            document.getElementById('quick-vault-amount').placeholder = `${t('Amount')} (${currencyCode})`;
-            document.getElementById('quick-goal-amount').placeholder = `${t('Amount')} (${currencyCode})`;
+            return JSON.parse(JSON.stringify(DEFAULT_STATE));
         }
 
-        // ---------- Live Exchange Rates ----------
-        // Amounts are stored internally in IDR; every other currency is converted from live rates.
-        const STORE_CODE = 'IDR';
-        const RATES_URL = 'https://open.er-api.com/v6/latest/USD';
-        let ratesCache = null;
-        try { ratesCache = JSON.parse(localStorage.getItem('pm_rates')); } catch (e) {}
-
-        // How many units of the selected currency equal 1 IDR
-        function getFactor() {
-            if (currencyCode === STORE_CODE) return 1;
-            const r = ratesCache && ratesCache.rates;
-            if (r && r[currencyCode] && r[STORE_CODE]) return r[currencyCode] / r[STORE_CODE];
-            return 1;
+        function saveState(broadcast = true) {
+            localStorage.setItem('wealthflow_app_data', JSON.stringify(appState));
+            if (broadcast) {
+                syncChannel.postMessage({ type: 'SYNC_STATE', state: appState });
+            }
+            renderApp();
         }
-        function decimalsFor(code) { return ZERO_DECIMAL.includes(code) ? 0 : 2; }
-        // Round UP (the tiny epsilon stops floating-point noise from bumping exact values)
-        function ceilTo(x, d) { const m = Math.pow(10, d); return Math.ceil(x * m - 1e-6) / m; }
-        function toDisplay(v) { return ceilTo(v * getFactor(), decimalsFor(currencyCode)); }
-        function toStore(v) { return v / getFactor(); }
 
-        async function fetchRates(force) {
-            if (!force && ratesCache && ratesCache.t && Date.now() - ratesCache.t < 3600 * 1000) return true;
+        // SYNC LISTENERS
+        syncChannel.onmessage = (e) => {
+            if (e.data && e.data.type === 'SYNC_STATE') {
+                appState = e.data.state;
+                renderApp();
+            }
+        };
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'wealthflow_app_data') {
+                appState = loadState();
+                renderApp();
+            }
+        });
+
+        // FETCH LIVE EXCHANGE RATES
+        async function fetchExchangeRates() {
             try {
-                const res = await fetch(RATES_URL);
+                const res = await fetch('https://open.er-api.com/v6/latest/USD');
                 const data = await res.json();
-                if (data.result === 'success' && data.rates) {
-                    ratesCache = { rates: data.rates, t: Date.now() };
-                    localStorage.setItem('pm_rates', JSON.stringify(ratesCache));
-                    return true;
+                if (data && data.rates) {
+                    exchangeRates = data.rates;
+                    renderApp();
                 }
-            } catch (e) { console.warn('Rate fetch failed', e); }
-            return !!(ratesCache && ratesCache.rates);
-        }
-
-        function updateRateInfo() {
-            const el = document.getElementById('rate-info');
-            if (currencyCode === STORE_CODE) { el.textContent = ''; return; }
-            const r = ratesCache && ratesCache.rates;
-            if (r && r[currencyCode] && r[STORE_CODE]) {
-                const idrPer = r[STORE_CODE] / r[currencyCode];
-                const time = new Date(ratesCache.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                el.textContent = `1 ${currencyCode} = ${Math.ceil(idrPer).toLocaleString('id-ID')} IDR · ${time}`;
-            } else {
-                el.textContent = '⚠ ' + t('Live rates unavailable, showing unconverted values');
+            } catch (err) {
+                console.log("Rates fetch fallback activated.");
             }
         }
 
-        // Show the saved base income / goal target in the selected currency
-        function refreshInputs() {
-            const bi = document.getElementById('base-income-input');
-            const gt = document.getElementById('goal-target');
-            if (document.activeElement !== bi) bi.value = toDisplay(baseIncome);
-            if (document.activeElement !== gt) gt.value = toDisplay(goalState.target);
+        // CONVERT & FORMAT CURRENCY
+        function convertFromBaseIDR(amountIDR, targetCurrency) {
+            const idrRate = exchangeRates['IDR'] || 15800;
+            const targetRate = exchangeRates[targetCurrency] || 1;
+            // IDR -> USD -> Target
+            const usdAmount = amountIDR / idrRate;
+            return usdAmount * targetRate;
         }
 
-        async function setCurrency(code) {
-            currencyCode = code;
-            localStorage.setItem('pm_currency', code);
-            const ok = await fetchRates(false);
-            updateCurrencyUI();
-            refreshInputs();
-            render();
-            updateRateInfo();
-            if (!ok && code !== STORE_CODE) showToast(t('Live rates unavailable, showing unconverted values'), 'info');
-            else showToast(t('Currency changed to') + ' ' + code);
-        }
+        function formatMoney(amountInBaseIDR) {
+            const curr = appState.currency || 'IDR';
+            const sym = CURRENCY_SYMBOLS[curr] || '$';
+            const converted = convertFromBaseIDR(amountInBaseIDR, curr);
 
-        // ---------- Backup / Restore (move your data between devices) ----------
-        function exportBackup() {
-            const data = { app: 'pm-backup', version: 1, baseIncome, goalState, transactions };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `money-backup-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-            showToast(t('Backup downloaded!'));
-        }
-
-        function importBackup(ev) {
-            const file = ev.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-                try {
-                    const d = JSON.parse(reader.result);
-                    if (d.app !== 'pm-backup' || !Array.isArray(d.transactions) || typeof d.baseIncome !== 'number' || !d.goalState) {
-                        throw new Error('Not a backup file');
-                    }
-                    if (!confirm(t('Replace the data on this device with this backup?'))) return;
-
-                    const types = ['Need', 'Want', 'Save', 'Income'];
-                    baseIncome = d.baseIncome;
-                    goalState = {
-                        title: String(d.goalState.title || DEFAULT_GOAL.title),
-                        target: Number(d.goalState.target) || DEFAULT_GOAL.target
-                    };
-                    transactions = d.transactions
-                        .filter(x => x && types.includes(x.type) && Number(x.amount) > 0)
-                        .map(x => ({
-                            id: String(x.id),
-                            date: String(x.date),
-                            desc: String(x.desc),
-                            type: x.type,
-                            amount: Number(x.amount),
-                            deduct: x.deduct !== false,
-                            isGoal: !!x.isGoal
-                        }));
-
-                    document.getElementById('goal-title').value = goalState.title;
-                    saveState();
-                    refreshInputs();
-                    showToast(t('Backup restored!'));
-                } catch (e) {
-                    showToast(t('Invalid backup file'), 'info');
-                } finally {
-                    ev.target.value = '';
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        // ---------- Live Sync with QR pairing (Firebase) ----------
-        // Paste your Firebase web config here (Project settings > Your apps > Web app).
-        // While apiKey is empty, sync stays off and the app works exactly as before.
-        const FIREBASE_CONFIG = {
-            apiKey: "",
-            authDomain: "",
-            projectId: "",
-            storageBucket: "",
-            messagingSenderId: "",
-            appId: ""
-        };
-        const CLOUD_ENABLED = typeof firebase !== 'undefined' && !!FIREBASE_CONFIG.apiKey;
-
-        function sessionGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
-        function sessionSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
-        function sessionDel(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
-        let cloudMode = localStorage.getItem('pm_sync_code') ? 'keep' : 'live';   // 'keep' | 'live'
-        let cloudCode = localStorage.getItem('pm_sync_code') || sessionGet('pm_sync_live') || '';
-        let cloudRef = null, cloudUnsub = null;
-        let cloudReady = false, dirty = false, pushing = false, pushTimer = null;
-        let applyingRemote = false, lastSig = '', remoteTxIds = new Set();
-        const TX_TYPES = ['Need', 'Want', 'Save', 'Income'];
-
-        function cleanTx(x) {
-            return { id: String(x.id), date: String(x.date || ''), desc: String(x.desc || ''), type: x.type,
-                     amount: Number(x.amount) || 0, deduct: x.deduct !== false, isGoal: !!x.isGoal };
-        }
-        function txKey(x) { return JSON.stringify([String(x.id), x.date, x.desc, x.type, Number(x.amount), x.deduct !== false, !!x.isGoal]); }
-        function byId(a, b) { return String(a.id).localeCompare(String(b.id), undefined, { numeric: true }); }
-        function sigOf(bi, goal, list) { return JSON.stringify([bi, goal.title, goal.target, [...list].sort(byId).map(txKey)]); }
-        function cloudSig() { return sigOf(baseIncome, goalState, transactions); }
-
-        function readRemote(d) {
-            d = d || {};
-            const tx = {};
-            Object.entries(d.tx || {}).forEach(([id, x]) => {
-                if (x && TX_TYPES.includes(x.type)) tx[id] = cleanTx({ ...x, id });
+            const isZeroDecimal = ZERO_DECIMAL_CURRENCIES.includes(curr);
+            const formattedNum = Number(converted).toLocaleString(undefined, {
+                minimumFractionDigits: isZeroDecimal ? 0 : 2,
+                maximumFractionDigits: isZeroDecimal ? 0 : 2
             });
+
+            return sym + formattedNum;
+        }
+
+        // CALCULATE METRICS
+        function calculateMetrics() {
+            let totalAdditionalIncome = 0;
+            let totalNeeds = 0;
+            let totalWants = 0;
+            let totalSavingsLogged = 0;
+            let walletDeductedSavings = 0;
+
+            appState.transactions.forEach(t => {
+                const amt = Number(t.amount) || 0;
+                if (t.type === 'Income') {
+                    totalAdditionalIncome += amt;
+                } else if (t.type === 'Need') {
+                    totalNeeds += amt;
+                } else if (t.type === 'Want') {
+                    totalWants += amt;
+                } else if (t.type === 'Save') {
+                    totalSavingsLogged += amt;
+                    if (t.deductWallet !== false) {
+                        walletDeductedSavings += amt;
+                    }
+                }
+            });
+
+            const totalIncome = Number(appState.baseIncome) + totalAdditionalIncome;
+            const totalExpenses = totalNeeds + totalWants;
+            const cashInWallet = totalIncome - totalExpenses - walletDeductedSavings;
+
             return {
-                baseIncome: typeof d.baseIncome === 'number' ? d.baseIncome : DEFAULT_BASE_INCOME,
-                goalState: (d.goalState && d.goalState.title)
-                    ? { title: String(d.goalState.title), target: Number(d.goalState.target) || DEFAULT_GOAL.target }
-                    : { ...DEFAULT_GOAL },
-                tx
+                totalIncome,
+                totalExpenses,
+                cashInWallet,
+                totalNeeds,
+                totalWants,
+                totalSavingsLogged
             };
         }
 
-        function isUntouchedDefault() {
-            return baseIncome === DEFAULT_BASE_INCOME &&
-                   JSON.stringify([...transactions].sort(byId).map(txKey)) === JSON.stringify([...DEFAULT_TRANSACTIONS].sort(byId).map(txKey));
-        }
-
-        function applyRemote(r) {
-            const list = Object.values(r.tx).sort(byId);
-            remoteTxIds = new Set(Object.keys(r.tx));
-            const sig = sigOf(r.baseIncome, r.goalState, list);
-            if (sig === cloudSig()) { lastSig = sig; return; }
-
-            applyingRemote = true;
-            baseIncome = r.baseIncome;
-            goalState = { ...r.goalState };
-            transactions = list;
-            persistData();
-            const gt = document.getElementById('goal-title');
-            if (document.activeElement !== gt) gt.value = goalState.title;
-            refreshInputs();
-            render();
-            lastSig = cloudSig();
-            applyingRemote = false;
-        }
-
-        function startCloudListen() {
-            let first = true;
-            cloudUnsub = cloudRef.onSnapshot(snap => {
-                if (snap.metadata.hasPendingWrites) return;
-
-                if (first) {
-                    first = false;
-                    if (cloudMode === 'live') {    // Live Sync: just show the synced log
-                        if (!snap.exists) {
-                            showToast(t('Sync code not found'), 'info');
-                            disconnectCloud();
-                            return;
-                        }
-                        cloudReady = true;
-                        applyRemote(readRemote(snap.data()));
-                        updateCloudUI();
-                        return;
-                    }
-                    cloudReady = true;
-                    if (!snap.exists) {            // nothing synced yet: upload this device's data
-                        remoteTxIds = new Set();
-                        lastSig = '';
-                        cloudSchedulePush();
-                    } else {
-                        const r = readRemote(snap.data());
-                        if (isUntouchedDefault() || sigOf(r.baseIncome, r.goalState, Object.values(r.tx)) === cloudSig()
-                            || confirm(t("Cloud already has data. OK = use the cloud data on this device. Cancel = merge this device's entries into the cloud."))) {
-                            applyRemote(r);
-                        } else {                   // merge: keep synced settings, add this device's extra entries
-                            const merged = { ...r, tx: { ...r.tx } };
-                            transactions.forEach(x => { if (!merged.tx[x.id]) merged.tx[x.id] = cleanTx(x); });
-                            applyRemote(merged);
-                            lastSig = '';
-                            cloudSchedulePush();
-                        }
-                    }
-                    updateCloudUI();
-                    return;
-                }
-
-                if (dirty || pushing || !snap.exists) return;   // don't overwrite changes we are about to send
-                applyRemote(readRemote(snap.data()));
-                updateCloudUI();
-            }, err => {
-                console.warn('Sync error', err);
-                showToast(t('Cloud sync error'), 'info');
-            });
-        }
-
-        function cloudSchedulePush() {
-            if (!cloudRef || !cloudReady || applyingRemote) return;
-            if (cloudSig() === lastSig) return;
-            dirty = true;
-            clearTimeout(pushTimer);
-            pushTimer = setTimeout(cloudPushNow, 500);
-            updateCloudUI();
-        }
-
-        async function cloudPushNow() {
-            if (!cloudRef) return;
-            dirty = false;
-            pushing = true;
-            const sig = cloudSig();
-            const FV = firebase.firestore.FieldValue;
-            const txMap = {};
-            transactions.forEach(x => { txMap[x.id] = cleanTx(x); });
-            const pushedIds = new Set(Object.keys(txMap));
-            remoteTxIds.forEach(id => { if (!pushedIds.has(id)) txMap[id] = FV.delete(); });   // entries deleted here
-            try {
-                await cloudRef.set({ baseIncome, goalState, tx: txMap, updatedAt: FV.serverTimestamp() }, { merge: true });
-                lastSig = sig;
-                remoteTxIds = pushedIds;
-                pushing = false;
-                if (!dirty) {                                   // pick up anything the other device added meanwhile
-                    const snap = await cloudRef.get({ source: 'server' });
-                    if (!dirty && snap.exists) applyRemote(readRemote(snap.data()));
-                }
-            } catch (e) {
-                console.warn('Sync push failed', e);
-                pushing = false;
-                dirty = true;
-                showToast(t('Cloud sync error'), 'info');
-            }
-            updateCloudUI();
-        }
-
-        function updateCloudUI() {
-            if (!CLOUD_ENABLED) return;
-            const busy = dirty || pushing || !cloudReady;
-            const dot = document.getElementById('sync-dot');
-            dot.classList.toggle('hidden', !cloudCode);
-            dot.style.background = busy ? '#fbbf24' : '#10b981';
-            const st = document.getElementById('sync-status');
-            st.textContent = !cloudCode ? '' :
-                (busy ? t('Syncing...') : t('Synced')) + ' · ' +
-                (cloudMode === 'live' ? t('Live Sync (nothing is kept on this device)') : t('Keep Sync (stays connected)'));
-        }
-
-        function makeCode() {
-            const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';   // 32 characters, no look-alikes
-            const r = new Uint32Array(24);
-            crypto.getRandomValues(r);
-            return Array.from(r, x => alphabet[x % 32]).join('');
-        }
-
-        function connectCloud(code, mode = 'keep') {
-            if (cloudUnsub) { cloudUnsub(); cloudUnsub = null; }
-            cloudCode = code;
-            cloudMode = mode;
-            if (mode === 'keep') {                       // remembered on this device
-                localStorage.setItem('pm_sync_code', code);
-                sessionDel('pm_sync_live');
-            } else {                                     // gone when the website is closed
-                localStorage.removeItem('pm_sync_code');
-                sessionSet('pm_sync_live', code);
-            }
-            cloudReady = false; dirty = false; pushing = false;
-            cloudRef = firebase.firestore().collection('sync').doc(code);
-            startCloudListen();
-            updateCloudUI();
-        }
-
-        function disconnectCloud() {
-            if (cloudUnsub) { cloudUnsub(); cloudUnsub = null; }
-            clearTimeout(pushTimer);
-            cloudRef = null; cloudCode = ''; cloudReady = false; dirty = false; pushing = false;
-            localStorage.removeItem('pm_sync_code');
-            sessionDel('pm_sync_live');
-            updateCloudUI();
-        }
-
-        let pendingJoin = '';
-
-        // Opened from a pairing QR code / link? Ask Keep Sync or Live Sync.
-        function checkJoinHash() {
-            const m = location.hash.match(/^#sync=([a-z0-9]{16,64})$/i);
-            if (!m) return;
-            history.replaceState(null, '', location.pathname + location.search);
-            const code = m[1].toLowerCase();
-            if (code === cloudCode) return;              // already connected to this log
-            pendingJoin = code;
-            document.getElementById('join-modal').classList.remove('hidden');
-        }
-
-        function joinSync(mode) {
-            document.getElementById('join-modal').classList.add('hidden');
-            if (pendingJoin) connectCloud(pendingJoin, mode);
-            pendingJoin = '';
-        }
-
-        function cancelJoin() {
-            document.getElementById('join-modal').classList.add('hidden');
-            pendingJoin = '';
-        }
-
-        function initCloud() {
-            if (!CLOUD_ENABLED) return;
-            firebase.initializeApp(FIREBASE_CONFIG);
-            if (cloudCode) connectCloud(cloudCode, cloudMode);
-            checkJoinHash();
-            window.addEventListener('hashchange', checkJoinHash);
-            updateCloudUI();
-        }
-
-        function syncLink() {
-            return location.origin + location.pathname + '#sync=' + cloudCode;
-        }
-
-        function renderSyncModal() {
-            const link = syncLink();
-            document.getElementById('sync-link').value = link;
-            const box = document.getElementById('sync-qr');
-            box.innerHTML = '';
-            if (typeof qrcode !== 'undefined') {
-                try {
-                    const qr = qrcode(0, 'M');
-                    qr.addData(link);
-                    qr.make();
-                    box.innerHTML = qr.createSvgTag(4, 0);
-                    const svg = box.querySelector('svg');
-                    if (svg) { svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width = '100%'; svg.style.height = '100%'; }
-                } catch (e) { console.warn('QR failed', e); }
-            }
-            updateCloudUI();
-        }
-
-        // Restore button: show the pairing QR (or open the file picker when sync isn't set up)
-        function onRestoreClick() {
-            if (!CLOUD_ENABLED) {
-                showToast(typeof firebase === 'undefined'
-                    ? t('Sync library did not load. Check your internet connection.')
-                    : t('Sync is not set up yet: paste your Firebase config into the file.'), 'info');
-                document.getElementById('backup-file').click();
-                return;
-            }
-            openSyncModal();
-        }
-
-        function openSyncModal() {
-            if (!cloudCode) connectCloud(makeCode(), 'keep');
-            renderSyncModal();
-            document.getElementById('sync-modal').classList.remove('hidden');
-        }
-        function closeSyncModal() { document.getElementById('sync-modal').classList.add('hidden'); }
-
-        function stopSync() {
-            const live = cloudMode === 'live';
-            if (!confirm(live ? t('Stop Live Sync? This device will go back to how it was before.')
-                              : t('Stop syncing on this device? Your data stays here.'))) return;
-            disconnectCloud();
-            closeSyncModal();
-            if (live) location.reload();      // reload = back to what this device had before
-        }
-
-        async function copySyncLink() {
-            const input = document.getElementById('sync-link');
-            try { await navigator.clipboard.writeText(input.value); }
-            catch (e) { input.select(); document.execCommand('copy'); }
-            showToast(t('Link copied!'));
-        }
-
-        window.onload = function() {
-            updateCurrencyUI();
-            lucide.createIcons();
-            
-            // Apply Theme
-            if (isDarkMode) document.documentElement.classList.add('dark');
-            updateThemeUI();
-
-            // Set today's date
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('tx-date').value = today;
-
-            // Load inputs
-            refreshInputs();
-            document.getElementById('goal-title').value = goalState.title;
-
-            initChart();
-            render();
-            applyLang();
-            updateRateInfo();
-            try { initCloud(); } catch (e) { console.warn('Cloud init failed', e); }
-
-            const syncRates = (force) => fetchRates(force).then(() => { refreshInputs(); render(); updateRateInfo(); });
-            syncRates(false);
-            setInterval(() => syncRates(false), 30 * 60 * 1000);
-        };
-
-        // Kept the name formatRp so the rest of the code works unchanged
-        function formatRp(val) {
-            const c = getCurrency();
-            const d = decimalsFor(c.code);
-            const opts = { style: 'currency', currency: c.code, minimumFractionDigits: d, maximumFractionDigits: d };
-            return new Intl.NumberFormat(c.locale, opts).format(toDisplay(Math.max(0, val)));
-        }
-
-        // Show Toast Notification
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            const bgColor = type === 'success' ? 'bg-sage-700 text-white dark:bg-sage-600' : 'bg-stone-800 text-white';
-            
-            toast.className = `px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto ${bgColor}`;
-            toast.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'info'}" class="w-4 h-4"></i> <span>${message}</span>`;
-            
-            container.appendChild(toast);
-            lucide.createIcons();
-
-            setTimeout(() => {
-                toast.classList.remove('translate-y-2', 'opacity-0');
-            }, 10);
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // Explicit Save Button Trigger
-        function manualSaveData() {
-            saveState();
-            showToast(t('All data saved to Local Storage!'));
-        }
-
-        // Live Sync keeps the log in memory only, so nothing is left on the device afterwards
-        function persistData() {
-            if (cloudCode && cloudMode === 'live') return;
-            localStorage.setItem('pm_base_income', JSON.stringify(baseIncome));
-            localStorage.setItem('pm_goal_state', JSON.stringify(goalState));
-            localStorage.setItem('pm_transactions', JSON.stringify(transactions));
-        }
-
-        function saveState() {
-            persistData();
-            localStorage.setItem('pm_theme', isDarkMode ? 'dark' : 'light');
-            cloudSchedulePush();
-            render();
-        }
-
-        function toggleTheme() {
-            isDarkMode = !isDarkMode;
-            if (isDarkMode) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-            updateThemeUI();
-            saveState();
-        }
-
-        function updateThemeUI() {
-            const icon = document.getElementById('theme-icon');
-            const text = document.getElementById('theme-text');
-            if (isDarkMode) {
-                icon.setAttribute('data-lucide', 'sun');
-                text.innerText = t('Light Mode');
-            } else {
-                icon.setAttribute('data-lucide', 'moon');
-                text.innerText = t('Dark Mode');
-            }
-            lucide.createIcons();
-        }
-
-        function toggleDeductOption() {
-            const type = document.getElementById('tx-type').value;
-            const container = document.getElementById('deduct-toggle-container');
-            if (type === 'Save') {
-                container.classList.remove('hidden');
-            } else {
-                container.classList.add('hidden');
-            }
-        }
-
+        // INIT CHART
         function initChart() {
-            const ctx = document.getElementById('spendingChart').getContext('2d');
+            const ctx = document.getElementById('allocationChart').getContext('2d');
             chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Needs', 'Wants', 'Savings/Goals'],
+                    labels: ['Needs', 'Wants', 'Savings'],
                     datasets: [{
                         data: [0, 0, 0],
-                        backgroundColor: ['#5C725E', '#E07A5F', '#3D405B'],
-                        borderWidth: 0,
-                        hoverOffset: 6
+                        backgroundColor: ['#3B82F6', '#F59E0B', '#738D75'],
+                        borderWidth: 2,
+                        borderColor: document.documentElement.classList.contains('dark') ? '#1A1C20' : '#ffffff'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '72%',
-                    plugins: { legend: { display: false } }
+                    plugins: { legend: { display: false } },
+                    cutout: '72%'
                 }
             });
         }
 
-        function render() {
-            renderOverviewStats();
-            renderBreakdown();
-            renderRightPanels();
-            renderTransactionsTable();
+        // RENDER APP UI
+        function renderApp() {
+            const metrics = calculateMetrics();
+
+            // Select Controls
+            document.getElementById('currency-select').value = appState.currency;
+            document.getElementById('lang-select').value = appState.language;
+
+            // Overview Cards
+            document.getElementById('disp-base-income').innerText = formatMoney(appState.baseIncome);
+            document.getElementById('disp-total-income').innerText = formatMoney(metrics.totalIncome);
+            document.getElementById('disp-total-expenses').innerText = formatMoney(metrics.totalExpenses);
+            document.getElementById('disp-cash-wallet').innerText = formatMoney(metrics.cashInWallet);
+
+            // Breakdown
+            const totalAlloc = metrics.totalNeeds + metrics.totalWants + metrics.totalSavingsLogged;
+            const pctNeeds = totalAlloc > 0 ? ((metrics.totalNeeds / totalAlloc) * 100).toFixed(1) : 0;
+            const pctWants = totalAlloc > 0 ? ((metrics.totalWants / totalAlloc) * 100).toFixed(1) : 0;
+            const pctSavings = totalAlloc > 0 ? ((metrics.totalSavingsLogged / totalAlloc) * 100).toFixed(1) : 0;
+
+            document.getElementById('disp-breakdown-needs').innerText = formatMoney(metrics.totalNeeds);
+            document.getElementById('disp-pct-needs').innerText = pctNeeds + '%';
+
+            document.getElementById('disp-breakdown-wants').innerText = formatMoney(metrics.totalWants);
+            document.getElementById('disp-pct-wants').innerText = pctWants + '%';
+
+            document.getElementById('disp-breakdown-savings').innerText = formatMoney(metrics.totalSavingsLogged);
+            document.getElementById('disp-pct-savings').innerText = pctSavings + '%';
+
+            // Chart
+            if (chartInstance) {
+                chartInstance.data.datasets[0].data = [metrics.totalNeeds, metrics.totalWants, metrics.totalSavingsLogged];
+                chartInstance.data.datasets[0].borderColor = document.documentElement.classList.contains('dark') ? '#1A1C20' : '#ffffff';
+                chartInstance.update();
+            }
+
+            // General Vault Balance
+            document.getElementById('disp-vault-total').innerText = formatMoney(appState.vaultBalance);
+
+            // Goals & Transactions
+            renderGoals();
+            renderTransactions();
+
+            // Apply Translations
+            applyTranslations();
+
             lucide.createIcons();
         }
 
-        function renderOverviewStats() {
-            let loggedIncome = 0;
-            let totalExpenses = 0;
-            let totalDeductedSavings = 0;
+        function renderGoals() {
+            const container = document.getElementById('goals-container');
+            container.innerHTML = '';
 
-            transactions.forEach(tx => {
-                const amt = Number(tx.amount);
-                if (tx.type === 'Income') loggedIncome += amt;
-                else if (tx.type === 'Need' || tx.type === 'Want') totalExpenses += amt;
-                else if (tx.type === 'Save' && tx.deduct !== false) totalDeductedSavings += amt;
-            });
-
-            const grandTotalIncome = baseIncome + loggedIncome;
-            const netRemaining = grandTotalIncome - totalExpenses - totalDeductedSavings;
-
-            document.getElementById('stat-total-income').innerText = formatRp(grandTotalIncome);
-            document.getElementById('stat-total-expenses').innerText = formatRp(totalExpenses);
-            document.getElementById('stat-net-remaining').innerText = formatRp(netRemaining);
-        }
-
-        function renderBreakdown() {
-            let needsTotal = 0;
-            let wantsTotal = 0;
-            let saveTotal = 0;
-
-            transactions.forEach(tx => {
-                const amt = Number(tx.amount);
-                if (tx.type === 'Need') needsTotal += amt;
-                if (tx.type === 'Want') wantsTotal += amt;
-                if (tx.type === 'Save') saveTotal += amt;
-            });
-
-            const grandTotalOut = needsTotal + wantsTotal + saveTotal;
-            const needsPct = grandTotalOut > 0 ? Math.round((needsTotal / grandTotalOut) * 100) : 0;
-            const wantsPct = grandTotalOut > 0 ? Math.round((wantsTotal / grandTotalOut) * 100) : 0;
-            const savePct = grandTotalOut > 0 ? Math.round((saveTotal / grandTotalOut) * 100) : 0;
-
-            document.getElementById('table-needs-amount').innerText = formatRp(needsTotal);
-            document.getElementById('table-needs-pct').innerText = needsPct + '%';
-
-            document.getElementById('table-wants-amount').innerText = formatRp(wantsTotal);
-            document.getElementById('table-wants-pct').innerText = wantsPct + '%';
-
-            document.getElementById('table-save-amount').innerText = formatRp(saveTotal);
-            document.getElementById('table-save-pct').innerText = savePct + '%';
-
-            if (chartInstance) {
-                chartInstance.data.datasets[0].data = [needsTotal, wantsTotal, saveTotal];
-                chartInstance.update();
-            }
-        }
-
-        function renderRightPanels() {
-            let vaultTotal = 0;
-            let goalTotal = 0;
-
-            transactions.forEach(tx => {
-                if (tx.type === 'Save') {
-                    if (tx.isGoal) goalTotal += Number(tx.amount);
-                    else vaultTotal += Number(tx.amount);
-                }
-            });
-
-            // Vault
-            document.getElementById('vault-total-display').innerText = formatRp(vaultTotal);
-
-            // Goal
-            const target = goalState.target || 1;
-            const remaining = Math.max(0, target - goalTotal);
-            const percentage = Math.min(100, Math.round((goalTotal / target) * 100));
-
-            document.getElementById('goal-saved-display').innerText = formatRp(goalTotal);
-            document.getElementById('goal-remaining-display').innerText = formatRp(remaining);
-            document.getElementById('goal-progress-percentage').innerText = percentage + '%';
-            document.getElementById('goal-progress-bar-fill').style.width = percentage + '%';
-        }
-
-        function renderTransactionsTable() {
-            const tbody = document.getElementById('transaction-rows');
-            const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
-
-            tbody.innerHTML = '';
-
-            let filtered = transactions.filter(tx => {
-                const matchesFilter = (activeFilter === 'All') || (tx.type === activeFilter);
-                const matchesSearch = tx.desc.toLowerCase().includes(searchVal) || tx.type.toLowerCase().includes(searchVal);
-                return matchesFilter && matchesSearch;
-            });
-
-            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-stone-400 dark:text-stone-500">${t('No entries found.')}</td></tr>`;
+            if (appState.goals.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">No active savings goals.</p>`;
                 return;
             }
 
-            filtered.forEach(tx => {
+            appState.goals.forEach(goal => {
+                const target = Number(goal.target) || 1;
+                const saved = Number(goal.saved) || 0;
+                const pct = Math.min(100, Math.round((saved / target) * 100));
+                const remaining = Math.max(0, target - saved);
+
+                const card = document.createElement('div');
+                card.className = 'p-3.5 rounded-xl bg-sand-50 dark:bg-darkbg border border-sand-200/80 dark:border-darkborder space-y-2';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold text-sm">${goal.title}</h4>
+                            <p class="text-xs text-gray-400">${formatMoney(saved)} / ${formatMoney(target)}</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-bold text-sage-600 dark:text-sage-400">${pct}%</span>
+                            <button onclick="deleteGoal('${goal.id}')" class="text-gray-400 hover:text-red-500 ml-1">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="w-full bg-sand-200 dark:bg-darkborder rounded-full h-2 overflow-hidden">
+                        <div class="bg-sage-600 h-2 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-xs pt-1">
+                        <span class="text-gray-400">${remaining > 0 ? formatMoney(remaining) + ' needed' : 'Goal reached! 🎉'}</span>
+                        <button onclick="quickDepositGoal('${goal.id}')" class="text-sage-600 dark:text-sage-400 font-semibold hover:underline">+ Add Funds</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderTransactions() {
+            const tbody = document.getElementById('txn-table-body');
+            tbody.innerHTML = '';
+
+            const searchKey = document.getElementById('txn-search').value.toLowerCase();
+
+            const filtered = appState.transactions.filter(t => {
+                const matchesFilter = activeFilter === 'All' || t.type === activeFilter;
+                const matchesSearch = t.desc.toLowerCase().includes(searchKey) || t.type.toLowerCase().includes(searchKey);
+                return matchesFilter && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-xs text-gray-400">No transactions recorded.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(t => {
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-sand-50/60 dark:hover:bg-darkbg-700/50 transition-colors';
+                tr.className = 'hover:bg-sand-50/50 dark:hover:bg-darkbg/50 transition';
 
-                const isIncome = tx.type === 'Income';
-                const badgeColor = 
-                    tx.type === 'Need' ? 'bg-sage-100 text-sage-800 dark:bg-sage-950/80 dark:text-sage-300 border-sage-200 dark:border-sage-800' :
-                    tx.type === 'Want' ? 'bg-orange-100 text-orange-800 dark:bg-orange-950/80 dark:text-orange-300 border-orange-200 dark:border-orange-800' :
-                    tx.type === 'Save' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' :
-                    'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+                let typeBadge = '';
+                let amountColor = '';
 
-                const deductLabel = tx.type === 'Save' ? (tx.deduct !== false ? ' (' + t('Deducted') + ')' : ' (' + t('No Deduct') + ')') : '';
+                if (t.type === 'Need') {
+                    typeBadge = '<span class="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-medium text-[10px]">Need</span>';
+                    amountColor = 'text-rose-600 dark:text-rose-400';
+                } else if (t.type === 'Want') {
+                    typeBadge = '<span class="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-medium text-[10px]">Want</span>';
+                    amountColor = 'text-rose-600 dark:text-rose-400';
+                } else if (t.type === 'Save') {
+                    typeBadge = '<span class="px-2 py-0.5 rounded-md bg-sage-100 dark:bg-sage-950/60 text-sage-700 dark:text-sage-300 font-medium text-[10px]">Save</span>';
+                    amountColor = 'text-sage-600 dark:text-sage-400';
+                } else {
+                    typeBadge = '<span class="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-medium text-[10px]">Income</span>';
+                    amountColor = 'text-emerald-600 dark:text-emerald-400';
+                }
+
+                const prefix = (t.type === 'Need' || t.type === 'Want') ? '-' : '+';
 
                 tr.innerHTML = `
-                    <td class="py-3.5 px-4 font-mono text-stone-500 dark:text-stone-400 text-[11px]">${tx.date}</td>
-                    <td class="py-3.5 px-4 font-semibold text-sand-900 dark:text-white">${escapeHtml(tx.desc)}</td>
-                    <td class="py-3.5 px-4">
-                        <span class="inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-md border ${badgeColor}">
-                            ${t(tx.type)}${deductLabel}
-                        </span>
-                    </td>
-                    <td class="py-3.5 px-4 text-right font-semibold ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-300 dark:text-stone-600'}">
-                        ${isIncome ? formatRp(tx.amount) : '-'}
-                    </td>
-                    <td class="py-3.5 px-4 text-right font-semibold ${!isIncome ? 'text-sand-900 dark:text-stone-200' : 'text-stone-300 dark:text-stone-600'}">
-                        ${!isIncome ? formatRp(tx.amount) : '-'}
-                    </td>
-                    <td class="py-3.5 px-4 text-center">
-                        <button onclick="deleteTransaction('${tx.id}')" class="p-1.5 text-stone-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors" title="${t('Delete')}">
-                            ${window.__noIcons ? '<span class="text-[11px] font-semibold px-1">' + t('Delete') + '</span>' : '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>'}
+                    <td class="py-3 px-3 text-gray-500 dark:text-gray-400">${t.date}</td>
+                    <td class="py-3 px-3">${typeBadge}</td>
+                    <td class="py-3 px-3 font-medium text-sand-900 dark:text-gray-200">${t.desc}</td>
+                    <td class="py-3 px-3 text-right font-semibold ${amountColor}">${prefix}${formatMoney(t.amount)}</td>
+                    <td class="py-3 px-3 text-center">
+                        <button onclick="deleteTransaction('${t.id}')" class="text-gray-400 hover:text-rose-500 transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     </td>
                 `;
@@ -1471,177 +1063,341 @@
             });
         }
 
-        function handleAddTransaction(e) {
-            e.preventDefault();
-            const date = document.getElementById('tx-date').value;
-            const type = document.getElementById('tx-type').value;
-            const desc = document.getElementById('tx-desc').value.trim();
-            const amount = toStore(parseFloat(document.getElementById('tx-amount').value));
-            const deduct = document.querySelector('input[name="tx-deduct"]:checked').value === 'yes';
+        function applyTranslations() {
+            const lang = appState.language || 'en';
+            const dict = DICT[lang] || DICT.en;
 
-            if (!amount || amount <= 0) return;
-
-            transactions.push({
-                id: Date.now().toString(),
-                date,
-                desc,
-                type,
-                amount,
-                deduct: type === 'Save' ? deduct : true,
-                isGoal: false
-            });
-
-            saveState();
-            showToast(t('Log entry added!'));
-
-            document.getElementById('tx-desc').value = '';
-            document.getElementById('tx-amount').value = '';
-        }
-
-        function handleQuickVaultSave(e) {
-            e.preventDefault();
-            const input = document.getElementById('quick-vault-amount');
-            const amount = toStore(parseFloat(input.value));
-            if (!amount || amount <= 0) return;
-
-            transactions.push({
-                id: Date.now().toString(),
-                date: new Date().toISOString().split('T')[0],
-                desc: 'Vault Deposit',
-                type: 'Save',
-                amount: amount,
-                deduct: true,
-                isGoal: false
-            });
-
-            input.value = '';
-            saveState();
-            showToast(t('Added to Savings Vault!'));
-        }
-
-        function handleQuickGoalSave(e) {
-            e.preventDefault();
-            const input = document.getElementById('quick-goal-amount');
-            const amount = toStore(parseFloat(input.value));
-            if (!amount || amount <= 0) return;
-
-            transactions.push({
-                id: Date.now().toString(),
-                date: new Date().toISOString().split('T')[0],
-                desc: `Goal Deposit: ${goalState.title}`,
-                type: 'Save',
-                amount: amount,
-                deduct: true,
-                isGoal: true
-            });
-
-            input.value = '';
-            saveState();
-            showToast(t('Added to Goal Tracker!'));
-        }
-
-        function updateBaseIncome() {
-            const val = parseFloat(document.getElementById('base-income-input').value);
-            if (!isNaN(val) && val >= 0) {
-                baseIncome = toStore(val);
-                saveState();
-                showToast(t('Baseline Income updated!'));
+            for (const [key, text] of Object.entries(dict)) {
+                const el = document.getElementById('t-' + key);
+                if (el) el.innerText = text;
             }
         }
 
-        function updateGoalInfo() {
-            const title = document.getElementById('goal-title').value.trim();
-            const target = parseFloat(document.getElementById('goal-target').value);
+        // GENERATE PRINTABLE PDF REPORT
+        function generatePDFReport() {
+            const metrics = calculateMetrics();
+            
+            document.getElementById('pdf-generated-date').innerText = new Date().toLocaleDateString();
+            document.getElementById('pdf-val-income').innerText = formatMoney(metrics.totalIncome);
+            document.getElementById('pdf-val-expenses').innerText = formatMoney(metrics.totalExpenses);
+            document.getElementById('pdf-val-wallet').innerText = formatMoney(metrics.cashInWallet);
 
-            if (title) goalState.title = title;
-            if (!isNaN(target) && target > 0) goalState.target = toStore(target);
+            document.getElementById('pdf-val-needs').innerText = formatMoney(metrics.totalNeeds);
+            document.getElementById('pdf-val-wants').innerText = formatMoney(metrics.totalWants);
+            document.getElementById('pdf-val-savings').innerText = formatMoney(metrics.totalSavingsLogged);
 
-            saveState();
-            showToast(t('Target Goal updated!'));
-        }
+            const rowsContainer = document.getElementById('pdf-table-rows');
+            rowsContainer.innerHTML = '';
 
-        function deleteTransaction(id) {
-            transactions = transactions.filter(t => t.id !== id);
-            saveState();
-            showToast(t('Entry deleted'));
-        }
-
-        function setFilter(category) {
-            activeFilter = category;
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.className = 'filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white';
-            });
-            const activeBtn = document.getElementById(`filter-${category}`);
-            if (activeBtn) {
-                activeBtn.className = 'filter-btn px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white dark:bg-darkbg-800 text-sand-900 dark:text-white shadow-xs';
-            }
-            renderTransactionsTable();
-        }
-
-        function resetData() {
-            if (cloudCode && !confirm(t('Reset will also clear your cloud data. Continue?'))) return;
-            baseIncome = DEFAULT_BASE_INCOME;
-            goalState = { ...DEFAULT_GOAL };
-            transactions = [ ...DEFAULT_TRANSACTIONS ];
-
-            refreshInputs();
-            document.getElementById('goal-title').value = goalState.title;
-
-            saveState();
-            showToast(t('All data reset to initial defaults'));
-        }
-
-        function exportPDFReport() {
-            // Populate PDF Template Data
-            document.getElementById('pdf-report-date').innerText = new Date().toLocaleDateString(LANGS[lang].locale);
-            document.getElementById('pdf-total-income').innerText = document.getElementById('stat-total-income').innerText;
-            document.getElementById('pdf-total-expenses').innerText = document.getElementById('stat-total-expenses').innerText;
-            document.getElementById('pdf-net-remaining').innerText = document.getElementById('stat-net-remaining').innerText;
-
-            document.getElementById('pdf-needs').innerText = document.getElementById('table-needs-amount').innerText;
-            document.getElementById('pdf-wants').innerText = document.getElementById('table-wants-amount').innerText;
-            document.getElementById('pdf-savings').innerText = document.getElementById('table-save-amount').innerText;
-
-            const pdfBody = document.getElementById('pdf-table-rows');
-            pdfBody.innerHTML = '';
-
-            transactions.forEach(tx => {
+            appState.transactions.forEach(t => {
                 const tr = document.createElement('tr');
-                const isIncome = tx.type === 'Income';
+                const prefix = (t.type === 'Need' || t.type === 'Want') ? '-' : '+';
                 tr.innerHTML = `
-                    <td class="py-1.5">${tx.date}</td>
-                    <td class="py-1.5 font-semibold">${escapeHtml(tx.desc)}</td>
-                    <td class="py-1.5">${t(tx.type)}</td>
-                    <td class="py-1.5 text-right">${isIncome ? formatRp(tx.amount) : '-'}</td>
-                    <td class="py-1.5 text-right">${!isIncome ? formatRp(tx.amount) : '-'}</td>
+                    <td class="py-1.5 px-1 text-gray-600">${t.date}</td>
+                    <td class="py-1.5 px-1 font-semibold">${t.type}</td>
+                    <td class="py-1.5 px-1 text-gray-800">${t.desc}</td>
+                    <td class="py-1.5 px-1 text-right font-bold">${prefix}${formatMoney(t.amount)}</td>
                 `;
-                pdfBody.appendChild(tr);
+                rowsContainer.appendChild(tr);
             });
 
             const element = document.getElementById('pdf-report-content');
-            element.classList.remove('hidden');
-
             const opt = {
                 margin:       0.5,
-                filename:     `Financial_Report_${new Date().toISOString().split('T')[0]}.pdf`,
+                filename:     `wealthflow-report-${new Date().toISOString().split('T')[0]}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2 },
                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
             };
 
-            showToast(t('Generating PDF Report...'));
-            html2pdf().set(opt).from(element).save().then(() => {
-                element.classList.add('hidden');
-            });
+            html2pdf().set(opt).from(element).save();
         }
 
-        function escapeHtml(text) {
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+        // DOM READY
+        document.addEventListener('DOMContentLoaded', () => {
+            checkHashSync();
+            fetchExchangeRates();
+
+            document.getElementById('txn-date').value = new Date().toISOString().split('T')[0];
+
+            initChart();
+            renderApp();
+
+            // Theme Toggle
+            document.getElementById('theme-toggle').addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                if (chartInstance) {
+                    chartInstance.data.datasets[0].borderColor = document.documentElement.classList.contains('dark') ? '#1A1C20' : '#ffffff';
+                    chartInstance.update();
+                }
+            });
+
+            // Select Event Listeners
+            document.getElementById('currency-select').addEventListener('change', (e) => {
+                appState.currency = e.target.value;
+                saveState();
+            });
+
+            document.getElementById('lang-select').addEventListener('change', (e) => {
+                appState.language = e.target.value;
+                saveState();
+            });
+
+            // Type Toggle for Radio Options
+            document.getElementById('txn-type').addEventListener('change', (e) => {
+                const radioBox = document.getElementById('savings-radio-box');
+                if (e.target.value === 'Save') {
+                    radioBox.classList.remove('hidden');
+                } else {
+                    radioBox.classList.add('hidden');
+                }
+            });
+
+            // Form Submit Transaction
+            document.getElementById('form-transaction').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const type = document.getElementById('txn-type').value;
+                const desc = document.getElementById('txn-desc').value.trim();
+                const rawAmount = parseFloat(document.getElementById('txn-amount').value);
+                const date = document.getElementById('txn-date').value;
+
+                if (!desc || isNaN(rawAmount) || rawAmount <= 0) return;
+
+                // Convert user input amount to base IDR
+                const curr = appState.currency || 'IDR';
+                const targetRate = exchangeRates[curr] || 1;
+                const idrRate = exchangeRates['IDR'] || 15800;
+                const baseIDRAmount = (rawAmount / targetRate) * idrRate;
+
+                const deductWallet = document.querySelector('input[name="deduct_wallet"]:checked').value === 'yes';
+
+                const newTxn = {
+                    id: Date.now().toString(),
+                    date,
+                    type,
+                    desc,
+                    amount: baseIDRAmount,
+                    deductWallet: type === 'Save' ? deductWallet : undefined
+                };
+
+                appState.transactions.unshift(newTxn);
+
+                if (type === 'Save') {
+                    appState.vaultBalance += baseIDRAmount;
+                }
+
+                saveState();
+
+                document.getElementById('txn-desc').value = '';
+                document.getElementById('txn-amount').value = '';
+            });
+
+            // Quick Vault Deposit
+            document.getElementById('form-quick-vault').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const amtInput = document.getElementById('vault-quick-amount');
+                const rawAmt = parseFloat(amtInput.value);
+                if (isNaN(rawAmt) || rawAmt <= 0) return;
+
+                const curr = appState.currency || 'IDR';
+                const targetRate = exchangeRates[curr] || 1;
+                const idrRate = exchangeRates['IDR'] || 15800;
+                const baseIDRAmount = (rawAmt / targetRate) * idrRate;
+
+                appState.vaultBalance += baseIDRAmount;
+                appState.transactions.unshift({
+                    id: Date.now().toString(),
+                    date: new Date().toISOString().split('T')[0],
+                    type: 'Save',
+                    desc: 'Vault Deposit',
+                    amount: baseIDRAmount,
+                    deductWallet: true
+                });
+
+                amtInput.value = '';
+                saveState();
+            });
+
+            // Filter Pills
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.className = 'filter-btn text-xs font-medium px-3 py-1.5 rounded-lg bg-sand-100 dark:bg-darkbg text-gray-600 dark:text-gray-300 hover:bg-sand-200 transition';
+                    });
+                    btn.className = 'filter-btn active text-xs font-medium px-3 py-1.5 rounded-lg bg-sage-600 text-white transition';
+                    activeFilter = btn.getAttribute('data-filter');
+                    renderTransactions();
+                });
+            });
+
+            document.getElementById('txn-search').addEventListener('input', renderTransactions);
+
+            // Edit Base Income
+            const modalBase = document.getElementById('modal-base-income');
+            document.getElementById('btn-edit-base-income').addEventListener('click', () => {
+                const converted = convertFromBaseIDR(appState.baseIncome, appState.currency);
+                document.getElementById('input-base-income').value = Math.round(converted);
+                modalBase.classList.remove('hidden');
+            });
+
+            document.getElementById('btn-cancel-base').addEventListener('click', () => modalBase.classList.add('hidden'));
+
+            document.getElementById('btn-save-base').addEventListener('click', () => {
+                const val = parseFloat(document.getElementById('input-base-income').value);
+                if (!isNaN(val) && val >= 0) {
+                    const curr = appState.currency || 'IDR';
+                    const targetRate = exchangeRates[curr] || 1;
+                    const idrRate = exchangeRates['IDR'] || 15800;
+                    appState.baseIncome = (val / targetRate) * idrRate;
+                    saveState();
+                    modalBase.classList.add('hidden');
+                }
+            });
+
+            // Goals Modal
+            const modalGoal = document.getElementById('modal-goal');
+            document.getElementById('btn-add-goal').addEventListener('click', () => {
+                document.getElementById('goal-title').value = '';
+                document.getElementById('goal-target').value = '';
+                modalGoal.classList.remove('hidden');
+            });
+
+            document.getElementById('btn-cancel-goal').addEventListener('click', () => modalGoal.classList.add('hidden'));
+
+            document.getElementById('form-goal').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const title = document.getElementById('goal-title').value.trim();
+                const rawTarget = parseFloat(document.getElementById('goal-target').value);
+
+                if (!title || isNaN(rawTarget) || rawTarget <= 0) return;
+
+                const curr = appState.currency || 'IDR';
+                const targetRate = exchangeRates[curr] || 1;
+                const idrRate = exchangeRates['IDR'] || 15800;
+                const baseTarget = (rawTarget / targetRate) * idrRate;
+
+                appState.goals.push({
+                    id: 'g_' + Date.now(),
+                    title,
+                    target: baseTarget,
+                    saved: 0
+                });
+
+                saveState();
+                modalGoal.classList.add('hidden');
+            });
+
+            // Device Sync & QR Modal
+            const modalSync = document.getElementById('modal-sync');
+            const qrContainer = document.getElementById('qrcode');
+
+            document.getElementById('btn-open-sync').addEventListener('click', () => {
+                modalSync.classList.remove('hidden');
+                qrContainer.innerHTML = '';
+                
+                // Build hash sync url
+                const serialized = btoa(encodeURIComponent(JSON.stringify(appState)));
+                const syncUrl = window.location.origin + window.location.pathname + '#sync=' + serialized;
+                document.getElementById('sync-url-input').value = syncUrl;
+
+                new QRCode(qrContainer, {
+                    text: syncUrl,
+                    width: 160,
+                    height: 160,
+                    colorDark : "#1C1B17",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M
+                });
+            });
+
+            document.getElementById('btn-close-sync').addEventListener('click', () => modalSync.classList.add('hidden'));
+
+            document.getElementById('btn-copy-sync-url').addEventListener('click', () => {
+                const copyText = document.getElementById('sync-url-input');
+                copyText.select();
+                document.execCommand('copy');
+                alert('Private sync URL copied to clipboard!');
+            });
+
+            // Export PDF Statement
+            document.getElementById('btn-export-pdf').addEventListener('click', generatePDFReport);
+
+            // Backup JSON
+            document.getElementById('btn-backup-json').addEventListener('click', () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `wealthflow-backup-${new Date().toISOString().split('T')[0]}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            });
+
+            // Restore JSON
+            document.getElementById('json-file-input').addEventListener('change', (e) => {
+                const fileReader = new FileReader();
+                fileReader.onload = (event) => {
+                    try {
+                        const parsed = JSON.parse(event.target.result);
+                        if (parsed && typeof parsed === 'object') {
+                            appState = parsed;
+                            saveState();
+                            alert('Data successfully restored!');
+                        }
+                    } catch (err) {
+                        alert('Invalid JSON file format.');
+                    }
+                };
+                if (e.target.files[0]) {
+                    fileReader.readAsText(e.target.files[0]);
+                }
+            });
+
+            // Reset Data
+            document.getElementById('btn-reset-data').addEventListener('click', () => {
+                if (confirm('Are you sure you want to reset all data to default? This action cannot be undone.')) {
+                    appState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+                    saveState();
+                }
+            });
+        });
+
+        // ACTIONS
+        function deleteTransaction(id) {
+            appState.transactions = appState.transactions.filter(t => t.id !== id);
+            saveState();
+        }
+
+        function deleteGoal(id) {
+            appState.goals = appState.goals.filter(g => g.id !== id);
+            saveState();
+        }
+
+        function quickDepositGoal(id) {
+            const rawStr = prompt("Enter amount to deposit into this goal:");
+            const rawAmt = parseFloat(rawStr);
+            if (!isNaN(rawAmt) && rawAmt > 0) {
+                const goal = appState.goals.find(g => g.id === id);
+                if (goal) {
+                    const curr = appState.currency || 'IDR';
+                    const targetRate = exchangeRates[curr] || 1;
+                    const idrRate = exchangeRates['IDR'] || 15800;
+                    const baseIDRAmount = (rawAmt / targetRate) * idrRate;
+
+                    goal.saved = (Number(goal.saved) || 0) + baseIDRAmount;
+                    
+                    appState.transactions.unshift({
+                        id: Date.now().toString(),
+                        date: new Date().toISOString().split('T')[0],
+                        type: 'Save',
+                        desc: `Goal: ${goal.title}`,
+                        amount: baseIDRAmount,
+                        deductWallet: true
+                    });
+
+                    saveState();
+                }
+            }
         }
     </script>
 </body>
