@@ -12,6 +12,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- html2pdf.js for PDF Generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Firebase (cloud sync) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+    <!-- QR code generator (for device pairing) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
     <!-- Google Fonts: Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -76,6 +81,50 @@
 </head>
 <body class="h-full font-sans antialiased bg-[#FAF9F6] text-[#2C2925] dark:bg-darkbg-900 dark:text-stone-200 transition-colors duration-300">
 
+    <!-- Sync Modal -->
+    <div id="sync-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onclick="if(event.target===this)closeSyncModal()">
+        <div class="w-full max-w-sm bg-white dark:bg-darkbg-800 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xl p-6 text-center">
+            <h2 class="text-base font-bold text-sand-900 dark:text-white mb-3">Sync between your devices</h2>
+
+            <div id="sync-off">
+                <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">Turn on syncing, then scan the QR code with your other device's camera.</p>
+                <button onclick="startSync()" class="w-full px-4 py-2.5 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 rounded-xl transition-all">Start syncing</button>
+            </div>
+
+            <div id="sync-on" class="hidden">
+                <div id="sync-qr" class="mx-auto w-48 h-48 p-2 bg-white rounded-xl border border-sand-200 flex items-center justify-center"></div>
+                <p class="text-xs text-stone-500 dark:text-stone-400 mt-3 mb-3">Scan this QR code with your other device's camera, or open the link there.</p>
+                <div class="flex items-center gap-2">
+                    <input id="sync-link" readonly class="w-full px-3 py-2 text-[11px] bg-sand-50 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl text-stone-600 dark:text-stone-300 focus:outline-none">
+                    <button onclick="copySyncLink()" class="px-3 py-2 text-xs font-semibold text-white bg-sage-600 hover:bg-sage-700 rounded-xl transition-all shrink-0">Copy link</button>
+                </div>
+                <p class="text-[11px] text-rose-600 dark:text-rose-400 mt-3">Keep this private: anyone with this link can see and edit your log.</p>
+                <button onclick="stopSync()" class="mt-4 text-[11px] font-semibold text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">Stop syncing on this device</button>
+            </div>
+
+            <button onclick="closeSyncModal()" class="mt-4 w-full px-4 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-sand-100 dark:bg-darkbg-700 hover:bg-sand-200 dark:hover:bg-darkbg-600 rounded-xl transition-all">Close</button>
+        </div>
+    </div>
+
+    <!-- Join Modal (opened by scanning the QR code) -->
+    <div id="join-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div class="w-full max-w-sm bg-white dark:bg-darkbg-800 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xl p-6">
+            <h2 class="text-base font-bold text-sand-900 dark:text-white text-center mb-1">Connect this device?</h2>
+            <p class="text-xs text-stone-500 dark:text-stone-400 text-center mb-4">Choose how this device should sync with your log.</p>
+
+            <button onclick="joinSync('keep')" class="w-full text-left p-3 rounded-xl border border-sand-200 dark:border-darkbg-600 bg-sand-50/60 dark:bg-darkbg-700/60 hover:border-sage-500 hover:bg-sage-50 dark:hover:bg-darkbg-700 transition-all mb-2">
+                <span class="block text-xs font-bold text-sand-900 dark:text-white">Keep Sync</span>
+                <span class="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Stays connected, even after you close the website.</span>
+            </button>
+            <button onclick="joinSync('live')" class="w-full text-left p-3 rounded-xl border border-sand-200 dark:border-darkbg-600 bg-sand-50/60 dark:bg-darkbg-700/60 hover:border-sage-500 hover:bg-sage-50 dark:hover:bg-darkbg-700 transition-all mb-2">
+                <span class="block text-xs font-bold text-sand-900 dark:text-white">Live Sync</span>
+                <span class="block text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Only syncs while this website is open. When you close it, this device disconnects (its copy of the data stays here).</span>
+            </button>
+
+            <button onclick="cancelJoin()" class="mt-1 w-full px-4 py-2 text-xs font-semibold text-stone-500 dark:text-stone-400 hover:text-sand-900 dark:hover:text-white transition-colors">Cancel</button>
+        </div>
+    </div>
+
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -116,6 +165,23 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform duration-200 group-hover:translate-y-0.5 text-sage-600 dark:text-sage-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     Export My Log (PDF)
                 </button>
+
+                <!-- Sync button (shown only after Firebase is configured) -->
+                <button id="cloud-btn" style="display:none" onclick="openSyncModal()" class="group inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-sage-600 dark:text-sage-400"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+                    <span id="cloud-label"></span>
+                </button>
+
+                <!-- Backup / Restore -->
+                <button onclick="exportBackup()" class="group inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform duration-200 group-hover:translate-y-0.5 text-sage-600 dark:text-sage-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Backup
+                </button>
+                <button onclick="document.getElementById('backup-file').click()" class="group inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-200 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-sand-100 dark:hover:bg-darkbg-700 transition-all shadow-xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 transition-transform duration-200 group-hover:-translate-y-0.5 text-sage-600 dark:text-sage-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Restore
+                </button>
+                <input type="file" id="backup-file" accept=".json,application/json" class="hidden" onchange="importBackup(event)">
 
                 <!-- Reset Data Button -->
                 <button onclick="resetData()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-400 dark:text-stone-500 hover:text-rose-600 dark:hover:text-rose-400 bg-white dark:bg-darkbg-800 border border-sand-200 dark:border-darkbg-700 rounded-xl hover:bg-rose-50/60 dark:hover:bg-rose-950/30 transition-all shadow-xs">
@@ -558,7 +624,11 @@
                 "e.g. Water 10k, Boba...":"mis. Air 10rb, Boba...","Search...":"Cari...",
                 "All data saved to Local Storage!":"Semua data tersimpan!","Log entry added!":"Catatan ditambahkan!","Added to Savings Vault!":"Ditambahkan ke Brankas Tabungan!",
                 "Added to Goal Tracker!":"Ditambahkan ke Pelacak Target!","Baseline Income updated!":"Pendapatan dasar diperbarui!","Target Goal updated!":"Target diperbarui!",
-                "Entry deleted":"Catatan dihapus","All data reset to initial defaults":"Semua data dikembalikan ke awal","Generating PDF Report...":"Membuat laporan PDF...","Currency changed to":"Mata uang diubah ke"
+                "Entry deleted":"Catatan dihapus","All data reset to initial defaults":"Semua data dikembalikan ke awal","Generating PDF Report...":"Membuat laporan PDF...","Currency changed to":"Mata uang diubah ke",
+                "Backup":"Cadangkan","Restore":"Pulihkan","Backup downloaded!":"Cadangan diunduh!","Backup restored!":"Cadangan dipulihkan!","Invalid backup file":"File cadangan tidak valid","Replace the data on this device with this backup?":"Ganti data di perangkat ini dengan cadangan ini?","Live rates unavailable, showing unconverted values":"Kurs langsung tidak tersedia, nilai ditampilkan tanpa konversi",
+                "Sign in with Google":"Masuk dengan Google","Synced":"Tersinkron","Syncing...":"Menyinkronkan...","Sign-in failed":"Gagal masuk","Sign out? Your data stays on this device.":"Keluar? Data Anda tetap ada di perangkat ini.","Cloud sync error":"Kesalahan sinkronisasi cloud","Cloud already has data. OK = use the cloud data on this device. Cancel = merge this device's entries into the cloud.":"Cloud sudah berisi data. OK = pakai data cloud di perangkat ini. Batal = gabungkan data perangkat ini ke cloud.","Reset will also clear your cloud data. Continue?":"Atur ulang juga akan menghapus data cloud Anda. Lanjutkan?",
+                "Sync between your devices":"Sinkronkan antar perangkat Anda","Turn on syncing, then scan the QR code with your other device's camera.":"Aktifkan sinkronisasi, lalu pindai kode QR dengan kamera perangkat lain Anda.","Start syncing":"Mulai sinkronisasi","Scan this QR code with your other device's camera, or open the link there.":"Pindai kode QR ini dengan kamera perangkat lain Anda, atau buka tautannya di sana.","Copy link":"Salin tautan","Keep this private: anyone with this link can see and edit your log.":"Jaga kerahasiaannya: siapa pun yang punya tautan ini dapat melihat dan mengubah catatan Anda.","Stop syncing on this device":"Hentikan sinkronisasi di perangkat ini","Close":"Tutup","Sync":"Sinkron","Link copied!":"Tautan disalin!","Connect this device to your synced log? The synced data will be used here.":"Hubungkan perangkat ini ke catatan tersinkron Anda? Data tersinkron akan dipakai di sini.","Stop syncing on this device? Your data stays here.":"Hentikan sinkronisasi di perangkat ini? Data Anda tetap di sini.",
+                "Connect this device?":"Hubungkan perangkat ini?","Choose how this device should sync with your log.":"Pilih cara perangkat ini menyinkronkan catatan Anda.","Keep Sync":"Tetap Sinkron","Stays connected, even after you close the website.":"Tetap terhubung, bahkan setelah Anda menutup situs.","Live Sync":"Sinkron Langsung","Only syncs while this website is open. When you close it, this device disconnects (its copy of the data stays here).":"Hanya menyinkronkan saat situs ini terbuka. Saat ditutup, perangkat ini terputus (salinan datanya tetap di sini).","Cancel":"Batal","Live":"Langsung"
             },
             ms: {
                 "Personal Money Management":"Pengurusan Wang Peribadi","Daily Tracker, Savings Vault & Target Goals":"Penjejak Harian, Peti Simpanan & Matlamat Sasaran",
@@ -580,7 +650,11 @@
                 "e.g. Water 10k, Boba...":"cth. Air 10k, Boba...","Search...":"Cari...",
                 "All data saved to Local Storage!":"Semua data disimpan!","Log entry added!":"Entri ditambah!","Added to Savings Vault!":"Ditambah ke Peti Simpanan!",
                 "Added to Goal Tracker!":"Ditambah ke Penjejak Matlamat!","Baseline Income updated!":"Pendapatan asas dikemas kini!","Target Goal updated!":"Matlamat sasaran dikemas kini!",
-                "Entry deleted":"Entri dipadam","All data reset to initial defaults":"Semua data ditetapkan semula","Generating PDF Report...":"Menjana laporan PDF...","Currency changed to":"Mata wang ditukar kepada"
+                "Entry deleted":"Entri dipadam","All data reset to initial defaults":"Semua data ditetapkan semula","Generating PDF Report...":"Menjana laporan PDF...","Currency changed to":"Mata wang ditukar kepada",
+                "Backup":"Sandaran","Restore":"Pulihkan","Backup downloaded!":"Sandaran dimuat turun!","Backup restored!":"Sandaran dipulihkan!","Invalid backup file":"Fail sandaran tidak sah","Replace the data on this device with this backup?":"Gantikan data pada peranti ini dengan sandaran ini?","Live rates unavailable, showing unconverted values":"Kadar langsung tidak tersedia, nilai dipaparkan tanpa penukaran",
+                "Sign in with Google":"Log masuk dengan Google","Synced":"Disegerakkan","Syncing...":"Menyegerak...","Sign-in failed":"Log masuk gagal","Sign out? Your data stays on this device.":"Log keluar? Data anda kekal pada peranti ini.","Cloud sync error":"Ralat segerak awan","Cloud already has data. OK = use the cloud data on this device. Cancel = merge this device's entries into the cloud.":"Awan sudah mempunyai data. OK = guna data awan pada peranti ini. Batal = gabungkan entri peranti ini ke awan.","Reset will also clear your cloud data. Continue?":"Set semula juga akan memadam data awan anda. Teruskan?",
+                "Sync between your devices":"Segerakkan antara peranti anda","Turn on syncing, then scan the QR code with your other device's camera.":"Hidupkan penyegerakan, kemudian imbas kod QR dengan kamera peranti lain anda.","Start syncing":"Mula menyegerak","Scan this QR code with your other device's camera, or open the link there.":"Imbas kod QR ini dengan kamera peranti lain anda, atau buka pautan di sana.","Copy link":"Salin pautan","Keep this private: anyone with this link can see and edit your log.":"Rahsiakan ini: sesiapa yang ada pautan ini boleh melihat dan mengubah log anda.","Stop syncing on this device":"Berhenti menyegerak pada peranti ini","Close":"Tutup","Sync":"Segerak","Link copied!":"Pautan disalin!","Connect this device to your synced log? The synced data will be used here.":"Sambungkan peranti ini ke log tersegerak anda? Data tersegerak akan digunakan di sini.","Stop syncing on this device? Your data stays here.":"Berhenti menyegerak pada peranti ini? Data anda kekal di sini.",
+                "Connect this device?":"Sambungkan peranti ini?","Choose how this device should sync with your log.":"Pilih cara peranti ini menyegerak log anda.","Keep Sync":"Kekal Segerak","Stays connected, even after you close the website.":"Kekal bersambung, walaupun selepas anda menutup laman web.","Live Sync":"Segerak Langsung","Only syncs while this website is open. When you close it, this device disconnects (its copy of the data stays here).":"Hanya menyegerak semasa laman web ini dibuka. Apabila ditutup, peranti ini terputus (salinan datanya kekal di sini).","Cancel":"Batal","Live":"Langsung"
             },
             zh: {
                 "Personal Money Management":"个人理财管理","Daily Tracker, Savings Vault & Target Goals":"每日记录、储蓄金库与目标",
@@ -602,7 +676,11 @@
                 "e.g. Water 10k, Boba...":"例如：水 10k、奶茶...","Search...":"搜索...",
                 "All data saved to Local Storage!":"所有数据已保存！","Log entry added!":"条目已添加！","Added to Savings Vault!":"已添加到储蓄金库！",
                 "Added to Goal Tracker!":"已添加到目标追踪！","Baseline Income updated!":"基础收入已更新！","Target Goal updated!":"目标已更新！",
-                "Entry deleted":"条目已删除","All data reset to initial defaults":"所有数据已重置为初始默认值","Generating PDF Report...":"正在生成 PDF 报告...","Currency changed to":"货币已更改为"
+                "Entry deleted":"条目已删除","All data reset to initial defaults":"所有数据已重置为初始默认值","Generating PDF Report...":"正在生成 PDF 报告...","Currency changed to":"货币已更改为",
+                "Backup":"备份","Restore":"恢复","Backup downloaded!":"备份已下载！","Backup restored!":"备份已恢复！","Invalid backup file":"备份文件无效","Replace the data on this device with this backup?":"用此备份替换本设备上的数据？","Live rates unavailable, showing unconverted values":"无法获取实时汇率，显示未换算的数值",
+                "Sign in with Google":"使用 Google 登录","Synced":"已同步","Syncing...":"同步中...","Sign-in failed":"登录失败","Sign out? Your data stays on this device.":"退出登录？数据仍保留在此设备上。","Cloud sync error":"云同步出错","Cloud already has data. OK = use the cloud data on this device. Cancel = merge this device's entries into the cloud.":"云端已有数据。确定 = 在此设备上使用云端数据。取消 = 将此设备的条目合并到云端。","Reset will also clear your cloud data. Continue?":"重置也会清除你的云端数据。继续？",
+                "Sync between your devices":"在你的设备之间同步","Turn on syncing, then scan the QR code with your other device's camera.":"开启同步，然后用另一台设备的相机扫描二维码。","Start syncing":"开始同步","Scan this QR code with your other device's camera, or open the link there.":"用另一台设备的相机扫描此二维码，或在那里打开链接。","Copy link":"复制链接","Keep this private: anyone with this link can see and edit your log.":"请保密：任何拥有此链接的人都能查看和编辑你的记录。","Stop syncing on this device":"停止在此设备上同步","Close":"关闭","Sync":"同步","Link copied!":"链接已复制！","Connect this device to your synced log? The synced data will be used here.":"将此设备连接到你已同步的记录？同步的数据将在此使用。","Stop syncing on this device? Your data stays here.":"停止在此设备上同步？数据会保留在此设备上。",
+                "Connect this device?":"连接此设备？","Choose how this device should sync with your log.":"选择此设备与你的记录同步的方式。","Keep Sync":"保持同步","Stays connected, even after you close the website.":"即使关闭网站也保持连接。","Live Sync":"实时同步","Only syncs while this website is open. When you close it, this device disconnects (its copy of the data stays here).":"仅在此网站打开时同步。关闭后此设备会断开连接（其数据副本仍保留在此处）。","Cancel":"取消","Live":"实时"
             }
         };
 
@@ -650,6 +728,7 @@
             updateThemeUI();
             updateCurrencyUI();
             applyLang();
+            updateCloudUI();
         }
 
         // ---------- Currency Support ----------
@@ -768,6 +847,333 @@
             else showToast(t('Currency changed to') + ' ' + code);
         }
 
+        // ---------- Backup / Restore (move your data between devices) ----------
+        function exportBackup() {
+            const data = { app: 'pm-backup', version: 1, baseIncome, goalState, transactions };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `money-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            showToast(t('Backup downloaded!'));
+        }
+
+        function importBackup(ev) {
+            const file = ev.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const d = JSON.parse(reader.result);
+                    if (d.app !== 'pm-backup' || !Array.isArray(d.transactions) || typeof d.baseIncome !== 'number' || !d.goalState) {
+                        throw new Error('Not a backup file');
+                    }
+                    if (!confirm(t('Replace the data on this device with this backup?'))) return;
+
+                    const types = ['Need', 'Want', 'Save', 'Income'];
+                    baseIncome = d.baseIncome;
+                    goalState = {
+                        title: String(d.goalState.title || DEFAULT_GOAL.title),
+                        target: Number(d.goalState.target) || DEFAULT_GOAL.target
+                    };
+                    transactions = d.transactions
+                        .filter(x => x && types.includes(x.type) && Number(x.amount) > 0)
+                        .map(x => ({
+                            id: String(x.id),
+                            date: String(x.date),
+                            desc: String(x.desc),
+                            type: x.type,
+                            amount: Number(x.amount),
+                            deduct: x.deduct !== false,
+                            isGoal: !!x.isGoal
+                        }));
+
+                    document.getElementById('goal-title').value = goalState.title;
+                    saveState();
+                    refreshInputs();
+                    showToast(t('Backup restored!'));
+                } catch (e) {
+                    showToast(t('Invalid backup file'), 'info');
+                } finally {
+                    ev.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ---------- Live Sync with QR pairing (Firebase) ----------
+        // Paste your Firebase web config here (Project settings > Your apps > Web app).
+        // While apiKey is empty, sync stays off and the app works exactly as before.
+        const FIREBASE_CONFIG = {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
+        const CLOUD_ENABLED = typeof firebase !== 'undefined' && !!FIREBASE_CONFIG.apiKey;
+
+        function sessionGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+        function sessionSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+        function sessionDel(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
+        let cloudMode = localStorage.getItem('pm_sync_code') ? 'keep' : 'live';   // 'keep' | 'live'
+        let cloudCode = localStorage.getItem('pm_sync_code') || sessionGet('pm_sync_live') || '';
+        let cloudRef = null, cloudUnsub = null;
+        let cloudReady = false, dirty = false, pushing = false, pushTimer = null;
+        let applyingRemote = false, lastSig = '', remoteTxIds = new Set();
+        const TX_TYPES = ['Need', 'Want', 'Save', 'Income'];
+
+        function cleanTx(x) {
+            return { id: String(x.id), date: String(x.date || ''), desc: String(x.desc || ''), type: x.type,
+                     amount: Number(x.amount) || 0, deduct: x.deduct !== false, isGoal: !!x.isGoal };
+        }
+        function txKey(x) { return JSON.stringify([String(x.id), x.date, x.desc, x.type, Number(x.amount), x.deduct !== false, !!x.isGoal]); }
+        function byId(a, b) { return String(a.id).localeCompare(String(b.id), undefined, { numeric: true }); }
+        function sigOf(bi, goal, list) { return JSON.stringify([bi, goal.title, goal.target, [...list].sort(byId).map(txKey)]); }
+        function cloudSig() { return sigOf(baseIncome, goalState, transactions); }
+
+        function readRemote(d) {
+            d = d || {};
+            const tx = {};
+            Object.entries(d.tx || {}).forEach(([id, x]) => {
+                if (x && TX_TYPES.includes(x.type)) tx[id] = cleanTx({ ...x, id });
+            });
+            return {
+                baseIncome: typeof d.baseIncome === 'number' ? d.baseIncome : DEFAULT_BASE_INCOME,
+                goalState: (d.goalState && d.goalState.title)
+                    ? { title: String(d.goalState.title), target: Number(d.goalState.target) || DEFAULT_GOAL.target }
+                    : { ...DEFAULT_GOAL },
+                tx
+            };
+        }
+
+        function isUntouchedDefault() {
+            return baseIncome === DEFAULT_BASE_INCOME &&
+                   JSON.stringify([...transactions].sort(byId).map(txKey)) === JSON.stringify([...DEFAULT_TRANSACTIONS].sort(byId).map(txKey));
+        }
+
+        function applyRemote(r) {
+            const list = Object.values(r.tx).sort(byId);
+            remoteTxIds = new Set(Object.keys(r.tx));
+            const sig = sigOf(r.baseIncome, r.goalState, list);
+            if (sig === cloudSig()) { lastSig = sig; return; }
+
+            applyingRemote = true;
+            baseIncome = r.baseIncome;
+            goalState = { ...r.goalState };
+            transactions = list;
+            localStorage.setItem('pm_base_income', JSON.stringify(baseIncome));
+            localStorage.setItem('pm_goal_state', JSON.stringify(goalState));
+            localStorage.setItem('pm_transactions', JSON.stringify(transactions));
+            const gt = document.getElementById('goal-title');
+            if (document.activeElement !== gt) gt.value = goalState.title;
+            refreshInputs();
+            render();
+            lastSig = cloudSig();
+            applyingRemote = false;
+        }
+
+        function startCloudListen() {
+            let first = true;
+            cloudUnsub = cloudRef.onSnapshot(snap => {
+                if (snap.metadata.hasPendingWrites) return;
+
+                if (first) {
+                    first = false;
+                    cloudReady = true;
+                    if (!snap.exists) {            // nothing synced yet: upload this device's data
+                        remoteTxIds = new Set();
+                        lastSig = '';
+                        cloudSchedulePush();
+                    } else {
+                        const r = readRemote(snap.data());
+                        if (isUntouchedDefault() || sigOf(r.baseIncome, r.goalState, Object.values(r.tx)) === cloudSig()
+                            || confirm(t("Cloud already has data. OK = use the cloud data on this device. Cancel = merge this device's entries into the cloud."))) {
+                            applyRemote(r);
+                        } else {                   // merge: keep synced settings, add this device's extra entries
+                            const merged = { ...r, tx: { ...r.tx } };
+                            transactions.forEach(x => { if (!merged.tx[x.id]) merged.tx[x.id] = cleanTx(x); });
+                            applyRemote(merged);
+                            lastSig = '';
+                            cloudSchedulePush();
+                        }
+                    }
+                    updateCloudUI();
+                    return;
+                }
+
+                if (dirty || pushing || !snap.exists) return;   // don't overwrite changes we are about to send
+                applyRemote(readRemote(snap.data()));
+                updateCloudUI();
+            }, err => {
+                console.warn('Sync error', err);
+                showToast(t('Cloud sync error'), 'info');
+            });
+        }
+
+        function cloudSchedulePush() {
+            if (!cloudRef || !cloudReady || applyingRemote) return;
+            if (cloudSig() === lastSig) return;
+            dirty = true;
+            clearTimeout(pushTimer);
+            pushTimer = setTimeout(cloudPushNow, 500);
+            updateCloudUI();
+        }
+
+        async function cloudPushNow() {
+            if (!cloudRef) return;
+            dirty = false;
+            pushing = true;
+            const sig = cloudSig();
+            const FV = firebase.firestore.FieldValue;
+            const txMap = {};
+            transactions.forEach(x => { txMap[x.id] = cleanTx(x); });
+            const pushedIds = new Set(Object.keys(txMap));
+            remoteTxIds.forEach(id => { if (!pushedIds.has(id)) txMap[id] = FV.delete(); });   // entries deleted here
+            try {
+                await cloudRef.set({ baseIncome, goalState, tx: txMap, updatedAt: FV.serverTimestamp() }, { merge: true });
+                lastSig = sig;
+                remoteTxIds = pushedIds;
+                pushing = false;
+                if (!dirty) {                                   // pick up anything the other device added meanwhile
+                    const snap = await cloudRef.get({ source: 'server' });
+                    if (!dirty && snap.exists) applyRemote(readRemote(snap.data()));
+                }
+            } catch (e) {
+                console.warn('Sync push failed', e);
+                pushing = false;
+                dirty = true;
+                showToast(t('Cloud sync error'), 'info');
+            }
+            updateCloudUI();
+        }
+
+        function updateCloudUI() {
+            if (!CLOUD_ENABLED) return;
+            document.getElementById('cloud-btn').style.display = '';
+            const label = document.getElementById('cloud-label');
+            label.textContent = !cloudCode ? t('Sync') : (((dirty || pushing || !cloudReady) ? t('Syncing...') : t('Synced')) + (cloudMode === 'live' ? ' · ' + t('Live') : ''));
+        }
+
+        function makeCode() {
+            const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';   // 32 characters, no look-alikes
+            const r = new Uint32Array(24);
+            crypto.getRandomValues(r);
+            return Array.from(r, x => alphabet[x % 32]).join('');
+        }
+
+        function connectCloud(code, mode = 'keep') {
+            if (cloudUnsub) { cloudUnsub(); cloudUnsub = null; }
+            cloudCode = code;
+            cloudMode = mode;
+            if (mode === 'keep') {                       // remembered on this device
+                localStorage.setItem('pm_sync_code', code);
+                sessionDel('pm_sync_live');
+            } else {                                     // gone when the website is closed
+                localStorage.removeItem('pm_sync_code');
+                sessionSet('pm_sync_live', code);
+            }
+            cloudReady = false; dirty = false; pushing = false;
+            cloudRef = firebase.firestore().collection('sync').doc(code);
+            startCloudListen();
+            updateCloudUI();
+        }
+
+        function disconnectCloud() {
+            if (cloudUnsub) { cloudUnsub(); cloudUnsub = null; }
+            clearTimeout(pushTimer);
+            cloudRef = null; cloudCode = ''; cloudReady = false; dirty = false; pushing = false;
+            localStorage.removeItem('pm_sync_code');
+            sessionDel('pm_sync_live');
+            updateCloudUI();
+        }
+
+        let pendingJoin = '';
+
+        // Opened from a pairing QR code / link? Ask Keep Sync or Live Sync.
+        function checkJoinHash() {
+            const m = location.hash.match(/^#sync=([a-z0-9]{16,64})$/i);
+            if (!m) return;
+            history.replaceState(null, '', location.pathname + location.search);
+            const code = m[1].toLowerCase();
+            if (code === cloudCode) return;              // already connected to this log
+            pendingJoin = code;
+            document.getElementById('join-modal').classList.remove('hidden');
+        }
+
+        function joinSync(mode) {
+            document.getElementById('join-modal').classList.add('hidden');
+            if (pendingJoin) connectCloud(pendingJoin, mode);
+            pendingJoin = '';
+        }
+
+        function cancelJoin() {
+            document.getElementById('join-modal').classList.add('hidden');
+            pendingJoin = '';
+        }
+
+        function initCloud() {
+            if (!CLOUD_ENABLED) return;
+            firebase.initializeApp(FIREBASE_CONFIG);
+            if (cloudCode) connectCloud(cloudCode, cloudMode);
+            checkJoinHash();
+            window.addEventListener('hashchange', checkJoinHash);
+            updateCloudUI();
+        }
+
+        function syncLink() {
+            return location.origin + location.pathname + '#sync=' + cloudCode;
+        }
+
+        function renderSyncModal() {
+            const on = !!cloudCode;
+            document.getElementById('sync-off').classList.toggle('hidden', on);
+            document.getElementById('sync-on').classList.toggle('hidden', !on);
+            if (!on) return;
+            const link = syncLink();
+            document.getElementById('sync-link').value = link;
+            const box = document.getElementById('sync-qr');
+            box.innerHTML = '';
+            if (typeof qrcode !== 'undefined') {
+                try {
+                    const qr = qrcode(0, 'M');
+                    qr.addData(link);
+                    qr.make();
+                    box.innerHTML = qr.createSvgTag(4, 0);
+                    const svg = box.querySelector('svg');
+                    if (svg) { svg.removeAttribute('width'); svg.removeAttribute('height'); svg.style.width = '100%'; svg.style.height = '100%'; }
+                } catch (e) { console.warn('QR failed', e); }
+            }
+        }
+
+        function openSyncModal() {
+            renderSyncModal();
+            document.getElementById('sync-modal').classList.remove('hidden');
+        }
+        function closeSyncModal() { document.getElementById('sync-modal').classList.add('hidden'); }
+
+        function startSync() {
+            connectCloud(makeCode());
+            renderSyncModal();
+        }
+
+        function stopSync() {
+            if (!confirm(t('Stop syncing on this device? Your data stays here.'))) return;
+            disconnectCloud();
+            renderSyncModal();
+        }
+
+        async function copySyncLink() {
+            const input = document.getElementById('sync-link');
+            try { await navigator.clipboard.writeText(input.value); }
+            catch (e) { input.select(); document.execCommand('copy'); }
+            showToast(t('Link copied!'));
+        }
+
         window.onload = function() {
             updateCurrencyUI();
             lucide.createIcons();
@@ -788,6 +1194,7 @@
             render();
             applyLang();
             updateRateInfo();
+            try { initCloud(); } catch (e) { console.warn('Cloud init failed', e); }
 
             const syncRates = (force) => fetchRates(force).then(() => { refreshInputs(); render(); updateRateInfo(); });
             syncRates(false);
@@ -836,6 +1243,7 @@
             localStorage.setItem('pm_goal_state', JSON.stringify(goalState));
             localStorage.setItem('pm_transactions', JSON.stringify(transactions));
             localStorage.setItem('pm_theme', isDarkMode ? 'dark' : 'light');
+            cloudSchedulePush();
             render();
         }
 
@@ -1144,6 +1552,7 @@
         }
 
         function resetData() {
+            if (cloudCode && !confirm(t('Reset will also clear your cloud data. Continue?'))) return;
             baseIncome = DEFAULT_BASE_INCOME;
             goalState = { ...DEFAULT_GOAL };
             transactions = [ ...DEFAULT_TRANSACTIONS ];
