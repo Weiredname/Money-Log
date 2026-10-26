@@ -929,7 +929,7 @@
         let cloudCode = localStorage.getItem('pm_sync_code') || sessionGet('pm_sync_live') || '';
         let cloudRef = null, cloudUnsub = null;
         let cloudReady = false, dirty = false, pushing = false, pushTimer = null;
-        let applyingRemote = false, lastSig = '', remoteTxIds = new Set();
+        let applyingRemote = false, lastSig = '', remoteTxIds = new Set(), pushFailedShown = false;
         const TX_TYPES = ['Need', 'Want', 'Save', 'Income'];
 
         function cleanTx(x) {
@@ -1029,6 +1029,17 @@
             });
         }
 
+        async function cloudRefresh() {
+            if (!cloudRef || !cloudReady || dirty || pushing) return;
+            try {
+                const snap = await cloudRef.get({ source: 'server' });
+                if (!dirty && !pushing && snap.exists) {
+                    applyRemote(readRemote(snap.data()));
+                    updateCloudUI();
+                }
+            } catch (e) { /* offline: try again later */ }
+        }
+
         function cloudSchedulePush() {
             if (!cloudRef || !cloudReady || applyingRemote) return;
             if (cloudSig() === lastSig) return;
@@ -1049,7 +1060,11 @@
             const pushedIds = new Set(Object.keys(txMap));
             remoteTxIds.forEach(id => { if (!pushedIds.has(id)) txMap[id] = FV.delete(); });   // entries deleted here
             try {
-                await cloudRef.set({ baseIncome, goalState, tx: txMap, updatedAt: FV.serverTimestamp() }, { merge: true });
+                await Promise.race([
+                    cloudRef.set({ baseIncome, goalState, tx: txMap, updatedAt: FV.serverTimestamp() }, { merge: true }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
+                ]);
+                pushFailedShown = false;
                 lastSig = sig;
                 remoteTxIds = pushedIds;
                 pushing = false;
@@ -1061,7 +1076,9 @@
                 console.warn('Sync push failed', e);
                 pushing = false;
                 dirty = true;
-                showToast(t('Cloud sync error'), 'info');
+                if (!pushFailedShown) { showToast(t('Cloud sync error'), 'info'); pushFailedShown = true; }
+                clearTimeout(pushTimer);
+                pushTimer = setTimeout(cloudPushNow, 8000);   // keep trying
             }
             updateCloudUI();
         }
@@ -1138,7 +1155,15 @@
         function initCloud() {
             if (!CLOUD_ENABLED) return;
             firebase.initializeApp(FIREBASE_CONFIG);
+            // Long polling is slower to set up but works where Safari/some networks stall the live connection
+            try { firebase.firestore().settings({ experimentalForceLongPolling: true }); } catch (e) { console.warn(e); }
             if (cloudCode) connectCloud(cloudCode, cloudMode);
+
+            // Safety nets: re-check the cloud when you come back to the page, when the internet returns, and every 15 s
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) cloudRefresh(); });
+            window.addEventListener('focus', cloudRefresh);
+            window.addEventListener('online', cloudRefresh);
+            setInterval(() => { if (!document.hidden) cloudRefresh(); }, 15000);
             checkJoinHash();
             window.addEventListener('hashchange', checkJoinHash);
             updateCloudUI();
