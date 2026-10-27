@@ -305,6 +305,22 @@
                     </div>
                 </div>
 
+                <!-- Monthly Budget Limits -->
+                <div class="bg-white dark:bg-darkbg-800 p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                        <h2 class="text-base font-bold text-sand-900 dark:text-white">Monthly Budget</h2>
+                        <input type="month" id="budget-month" onchange="setBudgetMonth(this.value)" class="px-3 py-2 text-xs bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200">
+                    </div>
+                    <p id="budget-income" class="text-xs text-stone-500 dark:text-stone-400 mb-4"></p>
+                    <div class="grid grid-cols-3 gap-3 mb-2">
+                        <div><label class="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Needs (max %)</label><input type="number" id="budget-needs" min="0" max="100" step="any" onchange="updateBudget()" class="w-full px-3 py-2 text-sm font-semibold bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200"></div>
+                        <div><label class="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Wants (max %)</label><input type="number" id="budget-wants" min="0" max="100" step="any" onchange="updateBudget()" class="w-full px-3 py-2 text-sm font-semibold bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200"></div>
+                        <div><label class="block text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Savings (target %)</label><input type="number" id="budget-save" min="0" max="100" step="any" onchange="updateBudget()" class="w-full px-3 py-2 text-sm font-semibold bg-sand-50/60 dark:bg-darkbg-700 border border-sand-200 dark:border-darkbg-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-500/40 text-stone-700 dark:text-stone-200"></div>
+                    </div>
+                    <p id="budget-total-note" class="text-[11px] font-semibold mb-4"></p>
+                    <div id="budget-rows" class="space-y-4"></div>
+                </div>
+
                 <!-- Add Transaction Form -->
                 <div class="bg-white dark:bg-darkbg-800 p-5 sm:p-6 rounded-2xl border border-sand-200 dark:border-darkbg-700 shadow-xs">
                     <h2 class="text-base font-bold text-sand-900 dark:text-white mb-4 flex items-center gap-2">
@@ -579,9 +595,11 @@
         ];
 
         // Global State
+        const DEFAULT_BUDGET = { needs: 50, wants: 30, save: 20 };
         let baseIncome = JSON.parse(localStorage.getItem('pm_base_income')) ?? DEFAULT_BASE_INCOME;
         let goalState = JSON.parse(localStorage.getItem('pm_goal_state')) || DEFAULT_GOAL;
         let transactions = JSON.parse(localStorage.getItem('pm_transactions')) || DEFAULT_TRANSACTIONS;
+        let budget = (() => { try { return normBudget(JSON.parse(localStorage.getItem('pm_budget'))); } catch (e) { return null; } })() || { ...DEFAULT_BUDGET };
         let activeFilter = 'All';
         let chartInstance = null;
         let isDarkMode = localStorage.getItem('pm_theme') === 'dark';
@@ -633,7 +651,24 @@
                 "Too big for a QR. Copy the link instead.":"Terlalu besar untuk QR. Salin tautannya saja.",
                 "Copy this log onto this device? It replaces what is here now.":"Salin catatan ini ke perangkat ini? Data yang ada sekarang akan diganti.",
                 "Log copied to this device!":"Catatan disalin ke perangkat ini!",
-                "This link is not valid":"Tautan ini tidak valid"
+                "This link is not valid":"Tautan ini tidak valid",
+                "Monthly Budget":"Anggaran Bulanan",
+                "Needs (max %)":"Kebutuhan (maks %)",
+                "Wants (max %)":"Keinginan (maks %)",
+                "Savings (target %)":"Tabungan (target %)",
+                "Total income this month: {amount}":"Total pemasukan bulan ini: {amount}",
+                "Used {used}% of your {limit}%":"Terpakai {used}% dari {limit}% Anda",
+                "Saved {used}% of your {limit}% target":"Tertabung {used}% dari target {limit}% Anda",
+                "{used} of {limit}":"{used} dari {limit}",
+                "{amount} left":"Sisa {amount}",
+                "Over by {amount}":"Lebih {amount}",
+                "{amount} still to save":"{amount} lagi untuk ditabung",
+                "Target reached":"Target tercapai",
+                "{pct}% max":"maks {pct}%",
+                "{pct}% target":"target {pct}%",
+                "Percentages add up to {total}%. Aim for 100%.":"Total persentase {total}%. Usahakan 100%.",
+                "Percentages add up to 100%":"Total persentase 100%",
+                "Budget saved":"Anggaran disimpan"
             },
             ms: {
                 "Personal Money Management":"Pengurusan Wang Peribadi","Daily Tracker, Savings Vault & Target Goals":"Penjejak Harian, Peti Simpanan & Matlamat Sasaran",
@@ -854,11 +889,11 @@
 
         // ---------- Backup / Restore (move your data between devices) ----------
         function exportBackup() {
-            const data = { app: 'pm-backup', version: 1, baseIncome, goalState, transactions };
+            const data = { app: 'pm-backup', version: 1, baseIncome, goalState, transactions, budget };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `money-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `money-backup-${localDate()}.json`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -880,6 +915,7 @@
 
                     const types = ['Need', 'Want', 'Save', 'Income'];
                     baseIncome = d.baseIncome;
+                    budget = normBudget(d.budget) || budget;
                     goalState = {
                         title: String(d.goalState.title || DEFAULT_GOAL.title),
                         target: Number(d.goalState.target) || DEFAULT_GOAL.target
@@ -938,8 +974,8 @@
         }
         function txKey(x) { return JSON.stringify([String(x.id), x.date, x.desc, x.type, Number(x.amount), x.deduct !== false, !!x.isGoal]); }
         function byId(a, b) { return String(a.id).localeCompare(String(b.id), undefined, { numeric: true }); }
-        function sigOf(bi, goal, list) { return JSON.stringify([bi, goal.title, goal.target, [...list].sort(byId).map(txKey)]); }
-        function cloudSig() { return sigOf(baseIncome, goalState, transactions); }
+        function sigOf(bi, goal, list, bud) { return JSON.stringify([bi, goal.title, goal.target, [...list].sort(byId).map(txKey), bud ? [bud.needs, bud.wants, bud.save] : null]); }
+        function cloudSig() { return sigOf(baseIncome, goalState, transactions, budget); }
 
         function readRemote(d) {
             d = d || {};
@@ -952,6 +988,7 @@
                 goalState: (d.goalState && d.goalState.title)
                     ? { title: String(d.goalState.title), target: Number(d.goalState.target) || DEFAULT_GOAL.target }
                     : { ...DEFAULT_GOAL },
+                budget: normBudget(d.budget),
                 tx
             };
         }
@@ -964,12 +1001,14 @@
         function applyRemote(r) {
             const list = Object.values(r.tx).sort(byId);
             remoteTxIds = new Set(Object.keys(r.tx));
-            const sig = sigOf(r.baseIncome, r.goalState, list);
+            const bud = r.budget || budget;
+            const sig = sigOf(r.baseIncome, r.goalState, list, bud);
             if (sig === cloudSig()) { lastSig = sig; return; }
 
             applyingRemote = true;
             baseIncome = r.baseIncome;
             goalState = { ...r.goalState };
+            budget = { ...bud };
             transactions = list;
             persistData();
             const gt = document.getElementById('goal-title');
@@ -1005,7 +1044,7 @@
                         cloudSchedulePush();
                     } else {
                         const r = readRemote(snap.data());
-                        if (isUntouchedDefault() || sigOf(r.baseIncome, r.goalState, Object.values(r.tx)) === cloudSig()
+                        if (isUntouchedDefault() || sigOf(r.baseIncome, r.goalState, Object.values(r.tx), r.budget || budget) === cloudSig()
                             || confirm(t("Cloud already has data. OK = use the cloud data on this device. Cancel = merge this device's entries into the cloud."))) {
                             applyRemote(r);
                         } else {                   // merge: keep synced settings, add this device's extra entries
@@ -1061,7 +1100,7 @@
             remoteTxIds.forEach(id => { if (!pushedIds.has(id)) txMap[id] = FV.delete(); });   // entries deleted here
             try {
                 await Promise.race([
-                    cloudRef.set({ baseIncome, goalState, tx: txMap, updatedAt: FV.serverTimestamp() }, { merge: true }),
+                    cloudRef.set({ baseIncome, goalState, budget, tx: txMap, updatedAt: FV.serverTimestamp() }, { merge: true }),
                     new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
                 ]);
                 pushFailedShown = false;
@@ -1212,7 +1251,7 @@
         }
         async function packLog() {
             const data = {
-                v: 1, b: baseIncome, g: goalState,
+                v: 1, b: baseIncome, g: goalState, u: [budget.needs, budget.wants, budget.save],
                 t: transactions.map(x => [x.id, x.date, x.desc, x.type, Math.round(Number(x.amount) * 100) / 100, x.deduct !== false ? 1 : 0, x.isGoal ? 1 : 0])
             };
             let bytes = new TextEncoder().encode(JSON.stringify(data));
@@ -1274,6 +1313,7 @@
                 baseIncome = d.b;
                 goalState = { title: String(d.g.title || DEFAULT_GOAL.title), target: Number(d.g.target) || DEFAULT_GOAL.target };
                 transactions = list;
+                if (Array.isArray(d.u)) budget = normBudget({ needs: d.u[0], wants: d.u[1], save: d.u[2] }) || budget;
                 document.getElementById('goal-title').value = goalState.title;
                 saveState();
                 refreshInputs();
@@ -1307,6 +1347,103 @@
             showToast(t('Link copied!'));
         }
 
+        // ---------- Monthly Budget ----------
+        function localDate(d = new Date()) {
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+        function normBudget(b) {
+            if (!b) return null;
+            const n = Number(b.needs), w = Number(b.wants), s = Number(b.save);
+            if ([n, w, s].some(v => !isFinite(v) || v < 0 || v > 100)) return null;
+            return { needs: n, wants: w, save: s };
+        }
+        function tf(key, vars) {
+            return t(key).replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
+        }
+        let budgetMonth = '';
+
+        function setBudgetMonth(v) {
+            if (/^\d{4}-\d{2}$/.test(v)) { budgetMonth = v; renderBudget(); }
+        }
+
+        function updateBudget() {
+            const read = (id, old) => {
+                const v = parseFloat(document.getElementById(id).value);
+                return isFinite(v) ? Math.min(100, Math.max(0, v)) : old;
+            };
+            budget = { needs: read('budget-needs', budget.needs), wants: read('budget-wants', budget.wants), save: read('budget-save', budget.save) };
+            saveState();
+            showToast(t('Budget saved'));
+        }
+
+        function renderBudget() {
+            const box = document.getElementById('budget-rows');
+            if (!box) return;
+            if (!budgetMonth) budgetMonth = localDate().slice(0, 7);
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = v; };
+            setVal('budget-month', budgetMonth);
+            setVal('budget-needs', budget.needs);
+            setVal('budget-wants', budget.wants);
+            setVal('budget-save', budget.save);
+
+            let inc = 0;
+            const used = { needs: 0, wants: 0, save: 0 };
+            transactions.forEach(tx => {
+                if (String(tx.date).slice(0, 7) !== budgetMonth) return;
+                const a = Number(tx.amount);
+                if (tx.type === 'Income') inc += a;
+                else if (tx.type === 'Need') used.needs += a;
+                else if (tx.type === 'Want') used.wants += a;
+                else if (tx.type === 'Save') used.save += a;
+            });
+            const total = baseIncome + inc;
+            document.getElementById('budget-income').textContent = tf('Total income this month: {amount}', { amount: formatRp(total) });
+
+            const sum = budget.needs + budget.wants + budget.save;
+            const ok = Math.abs(sum - 100) < 0.01;
+            const note = document.getElementById('budget-total-note');
+            note.textContent = ok ? t('Percentages add up to 100%') : tf('Percentages add up to {total}%. Aim for 100%.', { total: Math.round(sum * 10) / 10 });
+            note.className = 'text-[11px] font-semibold mb-4 ' + (ok ? 'text-sage-600 dark:text-sage-400' : 'text-amber-600 dark:text-amber-400');
+
+            const rows = [
+                { key: 'needs', label: t('Needs'), target: false },
+                { key: 'wants', label: t('Wants'), target: false },
+                { key: 'save', label: t('Savings'), target: true }
+            ];
+            box.innerHTML = rows.map(r => {
+                const pct = budget[r.key];
+                const limit = total * pct / 100;
+                const u = used[r.key];
+                const usedPct = limit > 0 ? Math.round(u / limit * 100) : (u > 0 ? 100 : 0);
+                const diff = Math.abs(limit - u);
+                let status, statusCls, bar;
+                if (r.target) {
+                    if (limit > 0 && u >= limit) { status = t('Target reached'); statusCls = 'text-emerald-600 dark:text-emerald-400'; bar = 'bg-emerald-500'; }
+                    else { status = tf('{amount} still to save', { amount: formatRp(diff) }); statusCls = 'text-indigo-600 dark:text-indigo-400'; bar = 'bg-indigo-500'; }
+                } else if (u > limit + 0.005) {
+                    status = tf('Over by {amount}', { amount: formatRp(diff) }); statusCls = 'text-rose-600 dark:text-rose-400'; bar = 'bg-rose-500';
+                } else {
+                    const warn = usedPct >= 80;
+                    status = tf('{amount} left', { amount: formatRp(diff) });
+                    statusCls = warn ? 'text-amber-600 dark:text-amber-400' : 'text-sage-600 dark:text-sage-400';
+                    bar = warn ? 'bg-amber-400' : 'bg-sage-500';
+                }
+                const tag = tf(r.target ? '{pct}% target' : '{pct}% max', { pct: pct });
+                const sentence = tf(r.target ? 'Saved {used}% of your {limit}% target' : 'Used {used}% of your {limit}%', { used: usedPct, limit: pct })
+                    + ' · ' + tf('{used} of {limit}', { used: formatRp(u), limit: formatRp(limit) });
+                return `<div>
+                    <div class="flex justify-between items-baseline mb-1.5 gap-2">
+                        <span class="text-xs font-bold text-sand-900 dark:text-white">${r.label} <span class="font-semibold text-stone-400 dark:text-stone-500">· ${tag}</span></span>
+                        <span class="text-[11px] font-bold ${statusCls}">${status}</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-sand-100 dark:bg-darkbg-700 rounded-full overflow-hidden">
+                        <div class="h-full ${bar} rounded-full transition-all duration-500" style="width:${Math.min(100, usedPct)}%"></div>
+                    </div>
+                    <p class="text-[11px] text-stone-500 dark:text-stone-400 mt-1">${sentence}</p>
+                </div>`;
+            }).join('');
+        }
+
         window.onload = function() {
             updateCurrencyUI();
             lucide.createIcons();
@@ -1316,7 +1453,7 @@
             updateThemeUI();
 
             // Set today's date
-            const today = new Date().toISOString().split('T')[0];
+            const today = localDate();
             document.getElementById('tx-date').value = today;
 
             // Load inputs
@@ -1378,6 +1515,7 @@
             localStorage.setItem('pm_base_income', JSON.stringify(baseIncome));
             localStorage.setItem('pm_goal_state', JSON.stringify(goalState));
             localStorage.setItem('pm_transactions', JSON.stringify(transactions));
+            localStorage.setItem('pm_budget', JSON.stringify(budget));
         }
 
         function saveState() {
@@ -1447,6 +1585,7 @@
             renderOverviewStats();
             renderBreakdown();
             renderRightPanels();
+            renderBudget();
             renderTransactionsTable();
             lucide.createIcons();
         }
@@ -1619,7 +1758,7 @@
 
             transactions.push({
                 id: Date.now().toString(),
-                date: new Date().toISOString().split('T')[0],
+                date: localDate(),
                 desc: 'Vault Deposit',
                 type: 'Save',
                 amount: amount,
@@ -1640,7 +1779,7 @@
 
             transactions.push({
                 id: Date.now().toString(),
-                date: new Date().toISOString().split('T')[0],
+                date: localDate(),
                 desc: `Goal Deposit: ${goalState.title}`,
                 type: 'Save',
                 amount: amount,
@@ -1696,6 +1835,7 @@
             baseIncome = DEFAULT_BASE_INCOME;
             goalState = { ...DEFAULT_GOAL };
             transactions = [ ...DEFAULT_TRANSACTIONS ];
+            budget = { ...DEFAULT_BUDGET };
 
             refreshInputs();
             document.getElementById('goal-title').value = goalState.title;
@@ -1736,7 +1876,7 @@
 
             const opt = {
                 margin:       0.5,
-                filename:     `Financial_Report_${new Date().toISOString().split('T')[0]}.pdf`,
+                filename:     `Financial_Report_${localDate()}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2 },
                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
